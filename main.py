@@ -1,3 +1,5 @@
+from scipy.special import other
+
 from sig_analysis import detect_pauses, detect_fricative_parts
 from utils.signal_classes import Signal, Seg
 
@@ -18,6 +20,10 @@ def process_text(text: str) -> (list, list):
     """
     detects cluster boundaries in text
     """
+    vowels = ('а', 'е', 'ё', 'и', 'о', 'у', 'ы', 'э', 'ю', 'я')
+    sonorants = ('й', 'л', 'м', 'н', 'р')
+    plosives = ('п', 'б', 'т', 'д', 'к', 'г')
+    other = ('в', 'ж', 'з', 'с', 'ф', 'х', 'ц', 'ч', 'ш', 'щ', 'ъ', 'ь')
     clusters = []
     word_boundaries_indexes = []
     return clusters, word_boundaries_indexes
