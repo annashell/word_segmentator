@@ -1,15 +1,16 @@
 from sig_analysis import detect_pauses, detect_fricative_parts
+from utils.json_utils import get_object_from_json
 from utils.signal_classes import Signal, Seg, Label
 
 
-def process_signal(signal: Signal) -> list:
+def process_signal(signal: Signal, config: dict) -> list:
     """
     detects cluster boundaries in audio
     writes seg-file with word boundaries labels
     """
     labels = [Label(0, "Y1", 'begin')]
-    labels = detect_pauses(signal, labels)
-    #labels = detect_fricative_parts(signal, labels)
+    labels = detect_pauses(signal, labels, config)
+    #labels = detect_fricative_parts(signal, labels, config)
 
     return labels
 
@@ -73,7 +74,9 @@ def main(wav_fn, text_fn) -> None:
 
     signal = Signal(wav_fn)
     signal.read_sound_file()
-    ac_labels = process_signal(signal)
+
+    config = get_object_from_json("config.json")
+    ac_labels = process_signal(signal, config)
     # txt_clusters, word_boundaries_indexes = process_text(text)
     # word_boundaries = make_alignment(ac_labels, txt_clusters, word_boundaries_indexes)
 
