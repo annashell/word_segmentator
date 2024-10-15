@@ -10,7 +10,7 @@ def process_signal(signal: Signal, config: dict) -> list:
     """
     labels = [Label(0, "Y1", 'begin')]
     labels = detect_pauses(signal, labels, config)
-    #labels = detect_fricative_parts(signal, labels, config)
+    labels = detect_fricative_parts(signal, labels, config)
 
     return labels
 
@@ -63,7 +63,7 @@ def main(wav_fn, text_fn) -> None:
     """
     writes seg-file with word boundaries
     :param wav_fn: audio filename
-    :param text: correspondent text
+    :param text_fn: correspondent text
     """
     text = ""
     with open(text_fn, encoding="utf-8") as f:
@@ -77,7 +77,7 @@ def main(wav_fn, text_fn) -> None:
 
     config = get_object_from_json("config.json")
     ac_labels = process_signal(signal, config)
-    # txt_clusters, word_boundaries_indexes = process_text(text)
+    txt_clusters, word_boundaries_indexes = process_text(text)
     # word_boundaries = make_alignment(ac_labels, txt_clusters, word_boundaries_indexes)
 
     new_seg_fn = wav_fn.split(".")[0] + ".seg_Y1"
