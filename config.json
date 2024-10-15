@@ -4,6 +4,10 @@
     "threshold": 0.05,
     "min_pause_duration": 0.15,
     "min_alloph_duration": 0.05
+  },
+
+  "allophone_classes_detection_parameters": {
+    "window_size": 0.1
   }
 
 }

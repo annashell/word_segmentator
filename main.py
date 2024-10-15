@@ -1,4 +1,4 @@
-from sig_analysis import detect_pauses, detect_fricative_parts
+from sig_analysis import detect_pauses, detect_allophone_classes
 from utils.json_utils import get_object_from_json
 from utils.signal_classes import Signal, Seg, Label
 
@@ -10,7 +10,7 @@ def process_signal(signal: Signal, config: dict) -> list:
     """
     labels = [Label(0, "Y1", 'begin')]
     labels = detect_pauses(signal, labels, config)
-    labels = detect_fricative_parts(signal, labels, config)
+    labels = detect_allophone_classes(signal, labels, config)
 
     return labels
 
