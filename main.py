@@ -26,7 +26,8 @@ def process_text(text: str) -> (list, list):
     """
     vowels = ('а', 'е', 'ё', 'и', 'о', 'у', 'ы', 'э', 'ю', 'я')
     sonorants = ('й', 'л', 'м', 'н', 'р')
-    plosives = ('п', 'б', 'т', 'д', 'к', 'г')
+    voiceless_stops = ('п', 'т', 'к')
+    voiced_stops = ('б', 'д', 'г')
     other = ('в', 'ж', 'з', 'с', 'ф', 'х', 'ц', 'ч', 'ш', 'щ', 'ъ', 'ь')
 
     clusters = [(0, 9)]
@@ -41,10 +42,12 @@ def process_text(text: str) -> (list, list):
             clusters.append((i, 0))
         elif ch in sonorants and clusters[-1][1] != 1:
             clusters.append((i, 1))
-        elif ch in plosives and clusters[-1][1] != 2:
+        elif ch in voiceless_stops and clusters[-1][1] != 2:
             clusters.append((i, 2))
-        elif ch in other and clusters[-1][1] != 3:
+        elif ch in voiced_stops and clusters[-1][1] != 2:
             clusters.append((i, 3))
+        elif ch in other and clusters[-1][1] != 3:
+            clusters.append((i, 4))
 
     clusters = clusters[1:]
     return clusters, word_boundaries_indexes
