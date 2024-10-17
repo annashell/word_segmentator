@@ -8,7 +8,7 @@
 
   "allophone_classes_detection_parameters": {
     "window_size": 0.03,
-    "threshold": 0.05
+    "threshold": 0.1
   }
 
 }
