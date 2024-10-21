@@ -1,7 +1,7 @@
 import math
 from copy import deepcopy
 
-# from scipy import signal as sc_signal
+from scipy import signal as sc_signal
 from scipy.fft import rfft, rfftfreq
 
 from utils.signal_classes import Signal, Label
@@ -38,8 +38,8 @@ def detect_pauses(signal: Signal, labels: list = [], config: dict = {}):
 
 def get_spectral_density_distribution(signal, samplerate) -> dict:
     num_samples = len(signal)
-    # sig_wind = signal * sc_signal.windows.hamming(num_samples)
-    yf = rfft(signal)
+    sig_wind = signal * sc_signal.windows.hamming(num_samples)
+    yf = rfft(sig_wind) / 0.5
     xf = rfftfreq(num_samples, 1 / samplerate)
     yf_mod = [i.real for i in yf]
 
@@ -95,6 +95,7 @@ def detect_allophone_classes(signal: Signal, labels: list[Label] = [], config: d
                 dens_250_to_500 = round(sp_density[1], 2)
                 dens_500_to_750 = round(sp_density[2], 2)
                 dens_750_to_1000 = round(sp_density[3], 2)
+                dens_1000_to_1250 = round(sp_density[3], 2)
                 less_500_dens = round(sum(sp_density[:2], 2))
                 dens_500_to_1000 = round(sum(sp_density[2:4], 2))
                 dens_1000_to_1500 = round(sum(sp_density[4:6], 2))
