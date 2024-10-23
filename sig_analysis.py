@@ -52,7 +52,7 @@ def get_spectral_density_distribution(signal, samplerate) -> dict:
         distribution_dict[int(xf[i] // 250)].append(yf_mod[i])
 
     for key, value in distribution_dict.items():
-        density = sum(list(map(lambda n: abs(n), value)))
+        density = sum(list(map(lambda n: abs(n), value))) ** 2
         density_log = math.log(density, 2) if density != 0.0 else 0
         distribution_dict[key] = round(density_log, 2)
 
@@ -106,16 +106,16 @@ def detect_allophone_classes(signal: Signal, labels: list[Label] = [], config: d
                 # first_half_sum = sum(sp_density[: len(sp_density) // 2])
                 # sec_half_sum = sum(sp_density[len(sp_density) // 2 : ])
                 intensity_by_sample = sum([abs(i) for i in signal_part]) / len(signal_part)
-                text_label = f"{round(dens_250_to_500 / dens_500_to_750, 2)} {round(less_250_dens / dens_500_to_750, 2)}"
+                text_label = f"{(round(less_2500_dens, 2) + round(dens_2500_to_5000, 2)) / (round(dens_5000_to_7500, 2) + round(dens_7500_to_10000, 2))}"
                 if max_part_ampl / max_syntagma_ampl < config_["threshold"]:        # voiceless stops
                     text_label = "stop (voiceless)"
-                elif dens_2500_to_5000 > less_2500_dens or dens_5000_to_7500 > less_2500_dens:  # other
+                elif (dens_2500_to_5000 + less_2500_dens) / (dens_5000_to_7500 + dens_7500_to_10000) < 0.75:
                     text_label = "fricative"
                 elif intensity_by_sample / avg_syntagma_intensity < 1 or less_250_dens / dens_500_to_750 > 1.2:
                     # low ampl periodic consonants
                     text_label = "other cons"
-                else:
-                    text_label = "vowel"       # high ampl sonorants and vowels
+                else: # else vowel or sonorant
+                    text_label = "vowel"      # high ampl sonorants and vowels
                 new_label = Label(new_label_position, "R1", text_label)
                 new_labels_clusters.append(new_label)
                 #

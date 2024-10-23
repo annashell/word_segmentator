@@ -7,7 +7,7 @@
   },
 
   "allophone_classes_detection_parameters": {
-    "window_size": 0.04,
+    "window_size": 0.02,
     "threshold": 0.1
   }
 
