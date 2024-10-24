@@ -10,7 +10,8 @@ from utils.signal_classes import Signal, Label
 def detect_pauses(signal: Signal, labels: list = [], config: dict = {}):
     config_ = config["pause_detection_parameters"]
 
-    N = int(config_["window_size"] * signal.params.samplerate // signal.params.sampwidth)  # окно анализа 20 мс в отсчетах
+    N = int(
+        config_["window_size"] * signal.params.samplerate // signal.params.sampwidth)  # окно анализа 20 мс в отсчетах
     max_signal_ampl = max([abs(i) for i in signal.signal])
     fictive_pause = [0 for i in range(
         int(config_["min_pause_duration"] * signal.params.samplerate * 2))]
@@ -45,7 +46,8 @@ def get_spectral_density_distribution(signal, samplerate) -> dict:
 
     distribution_dict = {}
 
-    for i in range(int(max(xf) // 250) + 1):         # считаем суммарную плотность на каждые 500 Гц до максимальной частоты в спектре
+    for i in range(
+            int(max(xf) // 250) + 1):  # считаем суммарную плотность на каждые 500 Гц до максимальной частоты в спектре
         distribution_dict[i] = []
 
     for i in range(len(xf)):
@@ -75,7 +77,7 @@ def detect_allophone_classes(signal: Signal, labels: list[Label] = [], config: d
     new_labels_clusters = []
     for start, end in zip(labels, labels[1:]):
         if start.text != "pause" and start.text != "begin":
-            syntagma = signal.signal[start.position : end.position]
+            syntagma = signal.signal[start.position: end.position]
             # synt_spectral_density_distribution = get_spectral_density_distribution(syntagma, samplerate)
             max_syntagma_ampl = max([abs(i) for i in syntagma])
             N = int(config_["window_size"] * signal.params.samplerate // signal.params.sampwidth)
@@ -97,10 +99,13 @@ def detect_allophone_classes(signal: Signal, labels: list[Label] = [], config: d
                 dens_750_to_1000 = round(sp_density[3], 2)
                 dens_1000_to_1250 = round(sp_density[3], 2)
                 less_500_dens = round(sum(sp_density[:2], 2))
+                less_1000_dens = round(sum(sp_density[:4], 2))
                 dens_500_to_1000 = round(sum(sp_density[2:4], 2))
                 dens_1000_to_1500 = round(sum(sp_density[4:6], 2))
+                dens_1500_to_2000 = round(sum(sp_density[6:8], 2))
                 less_2500_dens = round(sum(sp_density[:10]), 2)
-                dens_2500_to_5000 = round(sum(sp_density[10 : 20]), 2)
+                dens_2500_to_5000 = round(sum(sp_density[10: 20]), 2)
+                dens_2500_to_3500 = round(sum(sp_density[10: 14]), 2)
                 dens_5000_to_7500 = round(sum(sp_density[20: 30]), 2)
                 dens_7500_to_10000 = round(sum(sp_density[30:]), 2)
                 # first_half_sum = sum(sp_density[: len(sp_density) // 2])
@@ -109,7 +114,7 @@ def detect_allophone_classes(signal: Signal, labels: list[Label] = [], config: d
                 text_label = f"{(round(less_2500_dens, 2) + round(dens_2500_to_5000, 2)) / (round(dens_5000_to_7500, 2) + round(dens_7500_to_10000, 2))}"
                 if max_part_ampl / max_syntagma_ampl < config_["threshold"]:        # voiceless stops
                     text_label = "stop (voiceless)"
-                elif (dens_2500_to_5000 + less_2500_dens) / (dens_5000_to_7500 + dens_7500_to_10000) < 0.75:
+                elif (dens_2500_to_5000 + less_2500_dens) / (dens_5000_to_7500 + dens_7500_to_10000) < 0.8:
                     text_label = "fricative"
                 elif intensity_by_sample / avg_syntagma_intensity < 1 or less_250_dens / dens_500_to_750 > 1.2:
                     # low ampl periodic consonants
