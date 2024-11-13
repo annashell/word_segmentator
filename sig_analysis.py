@@ -60,11 +60,13 @@ def detect_pauses_2(filename: str, labels: list = [], config: dict = {}):
             labels_united.append(label2)
 
     # 4. Удаляем короткие паузы (скорее всего, это смычные согласные)
+    # 5. Удаляем короткие звучащие сегменты (это не речевые звуки)
     labels_united_cleared = []
     indexes_to_delete = []
     n = 1
     for label1, label2 in zip(labels_united[1:], labels_united[2:]):
-        if label1.text == "voiced" and (label2.position - label1.position) / wav_signal.params.samplerate < 0.05: # min_alloph_duration:
+        if ((label1.text == "voiced" and (label2.position - label1.position) / wav_signal.params.samplerate < 0.04) # min_alloph_duration
+                or (label1.text == "pause" and (label2.position - label1.position) / wav_signal.params.samplerate < 0.15)):
             if n < len(labels_united) - 1:
                 indexes_to_delete.append(n)
                 indexes_to_delete.append(n + 1)
@@ -74,33 +76,14 @@ def detect_pauses_2(filename: str, labels: list = [], config: dict = {}):
         if i not in indexes_to_delete:
             labels_united_cleared.append(label)
 
-    # 5. Удаляем короткие звучащие сегменты (это не речевые звуки)
-    labels_united_cleared_2 = []
-    indexes_to_delete_2 = []
-    n = 1
-    for label1, label2 in zip(labels_united_cleared[1:], labels_united_cleared[2:]):
-        if label1.text == "voiced" and (label2.position - label1.position) / wav_signal.params.samplerate < 0.05: # min_alloph_duration:
-            if n < len(labels_united_cleared) - 1:
-                indexes_to_delete_2.append(n)
-                indexes_to_delete_2.append(n + 1)
-        n += 1
-
-    for i, label in enumerate(labels_united_cleared):
-        if i not in indexes_to_delete:
-            labels_united_cleared_2.append(label)
-
     # 6. Пишем seg
     new_seg_fn = filename.split(".")[0] + ".seg_B1"
-    new_seg = Seg(new_seg_fn, labels_united_cleared_2, wav_signal.params)
+    new_seg = Seg(new_seg_fn, labels_united_cleared, wav_signal.params)
     new_seg.write_seg_file()
     print(f"Границы слов записаны в файл {new_seg_fn}")
 
-
-
-
-
-config = get_object_from_json(r"D:\pycharm_projects\word_segmentator\config.json")
-detect_pauses_2(r"D:\pycharm_projects\word_segmentator\test_data\av15t.wav", [], config)
+# config = get_object_from_json(r"D:\pycharm_projects\word_segmentator\config.json")
+# detect_pauses_2(r"D:\pycharm_projects\word_segmentator\test_data\av15t.wav", [], config)
 
 
 def detect_pauses(signal: Signal, labels: list = [], config: dict = {}):
@@ -158,7 +141,7 @@ def get_spectral_density_distribution(signal, samplerate) -> dict:
 
     for key, value in distribution_dict.items():
         density = sum(list(map(lambda n: abs(n), value))) ** 2
-        density_log = math.log(density, 2) if density != 0.0 else 0
+        density_log = math.log(density) if density != 0.0 else 0
         distribution_dict[key] = round(density_log, 2)
 
     return distribution_dict
@@ -206,26 +189,33 @@ def detect_allophone_classes(signal: Signal, labels: list[Label] = [], config: d
                 dens_500_to_1000 = round(sum(sp_density[2:4], 2))
                 dens_1000_to_1500 = round(sum(sp_density[4:6], 2))
                 dens_1500_to_2000 = round(sum(sp_density[6:8], 2))
+                dens_2000_to_2500 = round(sum(sp_density[8:10], 2))
                 less_2500_dens = round(sum(sp_density[:10]), 2)
                 dens_2500_to_5000 = round(sum(sp_density[10: 20]), 2)
-                dens_2500_to_3500 = round(sum(sp_density[10: 14]), 2)
                 dens_5000_to_7500 = round(sum(sp_density[20: 30]), 2)
-                dens_7500_to_10000 = round(sum(sp_density[30:]), 2)
+                dens_7500_to_10000 = round(sum(sp_density[30: 40]), 2)
+                x = round(less_500_dens / dens_500_to_1000, 2)
+                y = round(less_1000_dens / (dens_1000_to_1500 + dens_1500_to_2000), 2)
                 # first_half_sum = sum(sp_density[: len(sp_density) // 2])
                 # sec_half_sum = sum(sp_density[len(sp_density) // 2 : ])
                 intensity_by_sample = sum([abs(i) for i in signal_part]) / len(signal_part)
                 text_label = f"{(round(less_2500_dens, 2) + round(dens_2500_to_5000, 2)) / (round(dens_5000_to_7500, 2) + round(dens_7500_to_10000, 2))}"
                 if max_part_ampl / max_syntagma_ampl < config_["threshold"]:        # voiceless stops
-                    text_label = "stop (voiceless)"
-                elif (dens_2500_to_5000 + less_2500_dens) / (dens_5000_to_7500 + dens_7500_to_10000) < 0.8:
-                    text_label = "fricative"
-                elif intensity_by_sample / avg_syntagma_intensity < 1 or less_250_dens / dens_500_to_750 > 1.2:
-                    # low ampl periodic consonants
-                    text_label = "other cons"
-                else: # else vowel or sonorant
-                    text_label = "vowel"      # high ampl sonorants and vowels
+                    text_label = f"stop (voiceless)"
+                elif dens_5000_to_7500 > less_2500_dens:
+                    # text_label = f"fricative {less_2500_dens} {dens_2500_to_5000} {dens_5000_to_7500} {dens_7500_to_10000}"
+                    text_label = f"fricative"
+                elif x < 1.4 and y < 1.4:
+                    # low vowel or sonorant
+                    # text_label = f"vowel or sonorant {x} {y} {less_250_dens} {dens_250_to_500} {dens_500_to_750} {dens_750_to_1000}"
+                    text_label = f"vowel or sonorant"
+                else: # else other
+                    text_label = f"other cons {x} {y} {less_250_dens} {dens_250_to_500} {dens_500_to_750} {dens_750_to_1000}"
+                    text_label = f"other cons"
                 new_label = Label(new_label_position, "R1", text_label)
                 new_labels_clusters.append(new_label)
+            new_label_right = Label(new_label_position + N, "R1", "")
+            new_labels_clusters.append(new_label_right)
                 #
 
     new_labels_clusters = unite_label_clusters(new_labels_clusters)
