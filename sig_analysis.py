@@ -170,6 +170,9 @@ def detect_allophone_classes(signal: Signal, labels: list[Label] = [], config: d
 
             avg_syntagma_intensity = sum([abs(i) for i in syntagma]) / len(syntagma)
 
+            new_label_left = Label(0, "R1", "")
+            new_labels_clusters.append(new_label_left)
+
             for i in range(len(syntagma) // N):
                 new_label_position = int(i * N) + start.position
                 signal_part = syntagma[i * N: (i + 1) * N]
@@ -210,13 +213,12 @@ def detect_allophone_classes(signal: Signal, labels: list[Label] = [], config: d
                     # text_label = f"vowel or sonorant {x} {y} {less_250_dens} {dens_250_to_500} {dens_500_to_750} {dens_750_to_1000}"
                     text_label = f"vowel or sonorant"
                 else: # else other
-                    text_label = f"other cons {x} {y} {less_250_dens} {dens_250_to_500} {dens_500_to_750} {dens_750_to_1000}"
+                    # text_label = f"other cons {x} {y} {less_250_dens} {dens_250_to_500} {dens_500_to_750} {dens_750_to_1000}"
                     text_label = f"other cons"
                 new_label = Label(new_label_position, "R1", text_label)
                 new_labels_clusters.append(new_label)
             new_label_right = Label(new_label_position + N, "R1", "")
             new_labels_clusters.append(new_label_right)
-                #
 
     new_labels_clusters = unite_label_clusters(new_labels_clusters)
     new_labels = new_labels + new_labels_clusters
