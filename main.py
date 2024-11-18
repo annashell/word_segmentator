@@ -1,3 +1,4 @@
+import re
 from difflib import ndiff
 
 from sig_analysis import detect_pauses, detect_allophone_classes
@@ -73,7 +74,8 @@ def translate_to_latin(text: str) -> str:
             continue
         elif ch in ('б', 'в', 'г', 'д', 'з'):
             if i < len(text_) - 1:
-                if text_[i + 1] in stop_signs or text_[i + 1] in unvoised_cons or (text_[i + 1] == '0' and text_[i + 2] in unvoised_cons):
+                if text_[i + 1] in stop_signs or text_[i + 1] in unvoised_cons or (
+                        text_[i + 1] == '0' and text_[i + 2] in unvoised_cons):
                     latin_text += char_dict[ch][1] + " "
                 else:
                     latin_text += char_dict[ch][0] + " "
@@ -95,7 +97,7 @@ def process_text(text: str) -> (list, list):
     3 - other consonants
     4 - pauses
     """
-    latin_txt = ". " + translate_to_latin(text) # точка для добавления паузы в начале
+    latin_txt = ". " + translate_to_latin(text)  # точка для добавления паузы в начале
 
     vowels_and_sonorant = ('a', 'e', 'i', 'u', 'o', 'y', 'l', 'm', 'n', 'r', 'v', "l'", "m'", "n'", "r'", "v'")
     voiceless_stops = ('p', 't', 'k', "p'", "k'")
@@ -107,7 +109,7 @@ def process_text(text: str) -> (list, list):
 
     for i, ch in enumerate(latin_txt.lower().strip().split()):
         if ch == '0':
-            word_boundaries_indexes.append(i - 1) # -1 из-за точки в начале
+            word_boundaries_indexes.append(i - 1)  # -1 из-за точки в начале
         elif ch in stop_signs:
             clusters.append((i, 4))
         elif ch in vowels_and_sonorant and clusters[-1][1] != 0:
@@ -121,6 +123,7 @@ def process_text(text: str) -> (list, list):
 
     clusters = clusters[1:]
     return clusters, word_boundaries_indexes
+
 
 lbl_to_str_dict = {
     "": "",
@@ -191,6 +194,10 @@ def make_alignment(ac_parts, text_parts, word_boundaries_indexes) -> list:
                     else:
                         ac_parts_with_space[ac_part_with_space_st] += number_of_spaces
 
+        ac_parts_with_space[part[-1].position] = 1
+        if i < len(ac_parts) - 1:
+            ac_parts_with_space[ac_parts[i + 1][0].position] = 1
+
     return ac_parts_with_space
 
 
@@ -207,7 +214,6 @@ def split_acoustic_labels(ac_labels):
     return acoustic_parts
 
 
-
 def split_text_clusters(txt_clusters):
     text_parts = []
     new_text_part = []
@@ -221,8 +227,26 @@ def split_text_clusters(txt_clusters):
     return text_parts
 
 
-def define_word_boundaries(ac_parts_with_space, ac_labels):
-    pass
+def define_word_boundaries(ac_parts_with_space, ac_labels, words):
+    space_labels = []
+    cnt = 1
+
+    filtered_ac_labels = list(filter(lambda x: x.position in ac_parts_with_space.keys(), ac_labels))
+    space_labels.append(Label(filtered_ac_labels[0].position, "B1", words[0]))
+
+    for label, next_label in zip(filtered_ac_labels[1:], filtered_ac_labels[2:]):
+        if label.position in ac_parts_with_space.keys():
+            if cnt >= len(words):
+                break
+            number_of_spaces = ac_parts_with_space[label.position]
+            cluster_duration = next_label.position - label.position
+            for i in range(number_of_spaces):
+                space_labels.append(
+                    Label(label.position + (i + 1) * (cluster_duration // (number_of_spaces + 1)), "B1", words[cnt]))
+                cnt += 1
+
+    ac_labels.extend(space_labels)
+    return ac_labels
 
 
 def main(wav_fn, text_fn) -> None:
@@ -258,7 +282,8 @@ def main(wav_fn, text_fn) -> None:
     ac_parts_with_space = make_alignment(acoustic_parts, text_parts, word_boundaries_indexes)
 
     # 5. Нахождение границ слов с дополнительным акустическим анализом
-    word_boundaries = define_word_boundaries(ac_parts_with_space, ac_labels)
+    words = re.sub(r'[.,?!;:]', ' пауза', text).split(" ")
+    ac_labels = define_word_boundaries(ac_parts_with_space, ac_labels, words)
 
     # 6. Запись сег файла
     new_seg_fn = wav_fn.split(".")[0] + ".seg"
@@ -268,7 +293,7 @@ def main(wav_fn, text_fn) -> None:
     print(f"Границы слов записаны в файл {new_seg_fn}")
 
 
-wav_fn = r"D:\projects\word_segmentator\test_data\cta0004.wav"
-text_fn = r"D:\projects\word_segmentator\test_data\cta0004.txt"
+wav_fn = r"D:\pycharm_projects\word_segmentator\test_data\cta0004.wav"
+text_fn = r"D:\pycharm_projects\word_segmentator\test_data\cta0004.txt"
 
 main(wav_fn, text_fn)

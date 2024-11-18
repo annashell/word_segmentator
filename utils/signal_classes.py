@@ -104,7 +104,7 @@ class Seg:
             "N_CHANNEL": self.params.numchannels,
             "N_LABEL": len(self.labels)
         }
-        with open(self.filename, "w", encoding="utf-8") as f:
+        with open(self.filename, "w", encoding="utf-8-sig") as f:
             f.write("[PARAMETERS]\n")
             for key in params.keys():
                 f.write(key + '=' + str(params[key]) + "\n")
