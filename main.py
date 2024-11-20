@@ -91,13 +91,12 @@ def translate_to_latin(text: str) -> str:
 def process_text(text: str) -> (list, list):
     """
     detects cluster boundaries in text
-    0 - vowels
-    1 - sonorants
-    2 - plosives
+    0 - vowels and sonorants
+    1 - fricative
+    2 - voiceless stops
     3 - other consonants
-    4 - pauses
     """
-    latin_txt = ". " + translate_to_latin(text)  # точка для добавления паузы в начале
+    latin_txt = translate_to_latin(text)  # точка для добавления паузы в начале
 
     vowels_and_sonorant = ('a', 'e', 'i', 'u', 'o', 'y', 'l', 'm', 'n', 'r', 'v', "l'", "m'", "n'", "r'", "v'")
     voiceless_stops = ('p', 't', 'k', "p'", "k'")
@@ -105,13 +104,11 @@ def process_text(text: str) -> (list, list):
     other = ('b', 'd')
 
     clusters = [(0, 9)]
-    word_boundaries_indexes = []
+    word_boundaries_indexes = [0]
 
     for i, ch in enumerate(latin_txt.lower().strip().split()):
         if ch == '0':
-            word_boundaries_indexes.append(i - 1)  # -1 из-за точки в начале
-        elif ch in stop_signs:
-            clusters.append((i, 4))
+            word_boundaries_indexes.append(i)  # -1 из-за границы слова в начале
         elif ch in vowels_and_sonorant and clusters[-1][1] != 0:
             clusters.append((i, 0))
         elif ch in fricative and clusters[-1][1] != 1:
@@ -138,15 +135,15 @@ lbl_to_str_dict = {
 
 
 def convert_ac_labels_to_string(ac_labels):
-    ac_string = ""
+    ac_string = "4"
     for label in ac_labels:
         if label.level == "R1":
             ac_string += lbl_to_str_dict[label.text]
     return ac_string
 
 
-def convert_txt_clusters_to_string(text_clusters, word_boundaries):
-    txt_str = ""
+def convert_txt_clusters_to_string(text_clusters):
+    txt_str = "4"
     for cluster in text_clusters:
         txt_str += str(cluster[1])
     return txt_str
@@ -162,14 +159,16 @@ def make_alignment(ac_parts, text_parts, word_boundaries_indexes) -> list:
     for i, part in enumerate(ac_parts):
         ac_string = convert_ac_labels_to_string(part)
         text_part = text_parts[i]
-        txt_string = convert_txt_clusters_to_string(text_part, word_boundaries_indexes)
+        txt_string = convert_txt_clusters_to_string(text_part)
         str_difference = list(ndiff(ac_string, txt_string))
 
         # индексы текстовых кластеров с пробелами
         spaced_parts_indexes = []
         for ind in word_boundaries_indexes:
             for cl1, cl2 in zip(text_part, text_part[1:]):
-                if cl1[0] <= ind < cl2[0]:
+                if ind == cl2[0] - 1:
+                    spaced_parts_indexes.append(text_part.index(cl2))
+                elif cl1[0] <= ind < cl2[0]:
                     spaced_parts_indexes.append(text_part.index(cl1))
 
         ac_part_labels = []
@@ -229,12 +228,11 @@ def split_text_clusters(txt_clusters):
 
 def define_word_boundaries(ac_parts_with_space, ac_labels, words):
     space_labels = []
-    cnt = 1
+    cnt = 0
 
     filtered_ac_labels = list(filter(lambda x: x.position in ac_parts_with_space.keys(), ac_labels))
-    space_labels.append(Label(filtered_ac_labels[0].position, "B1", words[0]))
 
-    for label, next_label in zip(filtered_ac_labels[1:], filtered_ac_labels[2:]):
+    for label, next_label in zip(filtered_ac_labels, filtered_ac_labels[1:]):
         if label.position in ac_parts_with_space.keys():
             if cnt >= len(words):
                 break
@@ -247,6 +245,10 @@ def define_word_boundaries(ac_parts_with_space, ac_labels, words):
 
     ac_labels.extend(space_labels)
     return ac_labels
+
+
+def define_syntagmas(ac_labels, txt_clusters):
+    pass
 
 
 def main(wav_fn, text_fn) -> None:
@@ -274,16 +276,21 @@ def main(wav_fn, text_fn) -> None:
     # 2. Получение псевдотранскрипции и границ слов
     txt_clusters, word_boundaries_indexes = process_text(text)
 
-    # 3. Разбиение текста по знакам препинания, акустических меток по паузам, сопоставление
-    acoustic_parts = split_acoustic_labels(ac_labels)
-    text_parts = split_text_clusters(txt_clusters)
+    # 3. Сопоставление акустических меток с текстом, поиск пауз
+    # ac_labels = define_syntagmas(ac_labels, txt_clusters)
+    # acoustic_parts = split_acoustic_labels(ac_labels)
+    # text_parts = split_text_clusters(txt_clusters)
 
-    # 4. Выравнивание внутри синтагмы, вычисление кластеров с количеством пробелов на них
-    ac_parts_with_space = make_alignment(acoustic_parts, text_parts, word_boundaries_indexes)
+    # 4 Более точный ак анализ и транскрипция внутри каждой синтагмы
 
-    # 5. Нахождение границ слов с дополнительным акустическим анализом
-    words = re.sub(r'[.,?!;:]', ' пауза', text).split(" ")
-    ac_labels = define_word_boundaries(ac_parts_with_space, ac_labels, words)
+    # 5 Выравнивание и определение границ слов
+
+    # # 4. Выравнивание внутри синтагмы, вычисление кластеров с количеством пробелов на них
+    # ac_parts_with_space = make_alignment(acoustic_parts, text_parts, word_boundaries_indexes)
+    #
+    # # 5. Нахождение границ слов с дополнительным акустическим анализом
+    # words = re.sub(r'[.,?!;:]', ' пауза', text).split(" ")
+    # ac_labels = define_word_boundaries(ac_parts_with_space, ac_labels, words)
 
     # 6. Запись сег файла
     new_seg_fn = wav_fn.split(".")[0] + ".seg"

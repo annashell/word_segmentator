@@ -1,9 +1,13 @@
 import math
+from audioop import cross
 from copy import deepcopy
 
 import numpy as np
+from matplotlib import pyplot as plt
+from numpy import mean
 from scipy import signal as sc_signal
 from scipy.fft import rfft, rfftfreq
+from scipy.signal import find_peaks, correlate
 
 from utils.json_utils import get_object_from_json
 from utils.signal_classes import Signal, Label, Seg
@@ -104,10 +108,10 @@ def detect_pauses(signal: Signal, labels: list = [], config: dict = {}):
     signal_ = fictive_pause + list(signal.signal)
     for i in range(len(signal_) // N):
         signal_part = signal_[i * N: i * N + N]
-        max_part_ampl = max([abs(i) for i in signal_part])
+        mean_part_ampl = mean([abs(i) for i in signal_part])
         new_label_position = int(i * N - len(fictive_pause))
         to_prev_label_time_distance = (new_label_position - labels[-1].position) / signal.params.samplerate
-        if max_part_ampl < config_["threshold"] * max_signal_ampl:
+        if mean_part_ampl < config_["threshold"] * max_signal_ampl:
             if labels[-1].text != 'pause':
                 if (to_prev_label_time_distance > config_["min_alloph_duration"]
                         or labels[-1].text == 'begin'):
@@ -133,7 +137,7 @@ def get_spectral_density_distribution(signal, samplerate) -> dict:
     distribution_dict = {}
 
     for i in range(
-            int(max(xf) // 250) + 1):  # считаем суммарную плотность на каждые 500 Гц до максимальной частоты в спектре
+            int(max(xf) // 250) + 1):  # считаем суммарную плотность на каждые 250 Гц до максимальной частоты в спектре
         distribution_dict[i] = []
 
     for i in range(len(xf)):
@@ -153,6 +157,14 @@ def unite_label_clusters(labels: list[Label]):
         if label.text != new_labels[-1].text and labels[i + 1].text == label.text:
             new_labels.append(label)
     return new_labels
+
+
+def get_zero_cross_rate(signal_part):
+    zero_crossing_rate = 0
+    for el1, el2 in zip(signal_part, signal_part[1:]):
+        if el1 * el2 < 0:
+            zero_crossing_rate += 1
+    return zero_crossing_rate
 
 
 def detect_allophone_classes(signal: Signal, labels: list[Label] = [], config: dict = {}):
@@ -180,8 +192,20 @@ def detect_allophone_classes(signal: Signal, labels: list[Label] = [], config: d
                 max_part_ampl = max([abs(i) for i in signal_part])
                 sig_part_spectral_density_distribution = get_spectral_density_distribution(signal_part, samplerate)
 
+                zero_crossing_rate = (get_zero_cross_rate(signal_part) / len(signal_part)) * 100
+
                 # tmp
                 sp_density = list(sig_part_spectral_density_distribution.values())
+
+                peaks = find_peaks(sp_density, height=17)
+
+                correlation = correlate(signal_part, signal_part)
+                corr_zero_crossing = get_zero_cross_rate(correlation)
+
+                number_of_peaks_before_5000 = len([x for x in peaks[0] if x < len(sp_density) / 2])
+                number_of_peaks_after_5000 = len([x for x in peaks[0] if x >= len(sp_density) / 2])
+
+
                 less_250_dens = round(sp_density[0], 2)
                 dens_250_to_500 = round(sp_density[1], 2)
                 dens_500_to_750 = round(sp_density[2], 2)
@@ -205,16 +229,16 @@ def detect_allophone_classes(signal: Signal, labels: list[Label] = [], config: d
                 text_label = f"{(round(less_2500_dens, 2) + round(dens_2500_to_5000, 2)) / (round(dens_5000_to_7500, 2) + round(dens_7500_to_10000, 2))}"
                 if max_part_ampl / max_syntagma_ampl < config_["threshold"]:        # voiceless stops
                     text_label = f"stop (voiceless)"
-                elif dens_5000_to_7500 > less_2500_dens:
+                elif zero_crossing_rate > 15 or less_2500_dens < dens_5000_to_7500:
                     # text_label = f"fricative {less_2500_dens} {dens_2500_to_5000} {dens_5000_to_7500} {dens_7500_to_10000}"
                     text_label = f"fricative"
-                elif x < 1.4 and y < 1.4:
+                elif number_of_peaks_before_5000 >= 3 and less_2500_dens > dens_5000_to_7500:
                     # low vowel or sonorant
                     # text_label = f"vowel or sonorant {x} {y} {less_250_dens} {dens_250_to_500} {dens_500_to_750} {dens_750_to_1000}"
                     text_label = f"vowel or sonorant"
                 else: # else other
                     # text_label = f"other cons {x} {y} {less_250_dens} {dens_250_to_500} {dens_500_to_750} {dens_750_to_1000}"
-                    text_label = f"other cons"
+                    text_label = f"other periodic cons"
                 new_label = Label(new_label_position, "R1", text_label)
                 new_labels_clusters.append(new_label)
             new_label_right = Label(new_label_position + N, "R1", "")
