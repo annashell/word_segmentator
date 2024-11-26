@@ -1,9 +1,11 @@
 import glob
+import json
 
 import numpy as np
 from scipy import signal
 from scipy.fft import rfft, rfftfreq
 from scipy.signal import correlate, find_peaks
+from scipy.stats import stats
 
 from sig_analysis import get_spectral_density_distribution, get_zero_cross_rate
 from utils.signal_classes import Seg, Signal
@@ -23,7 +25,6 @@ def get_statistics_from_b1(seg_b1: Seg, signal_: Signal, window_size: float):
 
         alloph = signal_.signal[start.position: end.position]
         N = int(window_size * signal_.params.samplerate // signal_.params.sampwidth)
-
 
         avg_spectral_density = np.zeros(40)
 
@@ -46,15 +47,16 @@ def get_statistics_from_b1(seg_b1: Seg, signal_: Signal, window_size: float):
             features_dict[start.text][-1].append(round(corr_zero_crossing, 2))
 
             # 3. spectral peaks number
-            peaks = find_peaks(yf_mod_log, height=17)
-            number_of_peaks_before_5000 = len([x for x in peaks[0] if x < len(yf_mod_log) / 2])
-            number_of_peaks_after_5000 = len([x for x in peaks[0] if x >= len(yf_mod_log) / 2])
+            sig_part_spectral_density_distribution = get_spectral_density_distribution(signal_part,
+                                                                                       signal_.params.samplerate)
+            sp_density = list(sig_part_spectral_density_distribution.values())
+            peaks = find_peaks(sp_density, height=17)
+            number_of_peaks_before_5000 = len([x for x in peaks[0] if x < len(sp_density) / 2])
+            number_of_peaks_after_5000 = len([x for x in peaks[0] if x >= len(sp_density) / 2])
             features_dict[start.text][-1].append(number_of_peaks_before_5000)
             features_dict[start.text][-1].append(number_of_peaks_after_5000)
 
             # 4. spectral density distribution
-            sig_part_spectral_density_distribution = get_spectral_density_distribution(signal_part,
-                                                                                       signal_.params.samplerate)
             for j, value in enumerate(sig_part_spectral_density_distribution.values()):
                 if j < 40:
                     avg_spectral_density[j] += value
@@ -70,8 +72,10 @@ def get_statistics_from_b1(seg_b1: Seg, signal_: Signal, window_size: float):
             dens_5000_to_7500 = round(sum(avg_spectral_density[20: 30]), 2)
             dens_7500_to_10000 = round(sum(avg_spectral_density[30: 40]), 2)
 
-            features_dict[start.text][-1].append([less_500_dens, dens_500_to_1000, dens_1000_to_1500, dens_1500_to_2000])
-            features_dict[start.text][-1].append([less_2500_dens, dens_2500_to_5000, dens_5000_to_7500, dens_7500_to_10000])
+            features_dict[start.text][-1].extend(
+                [less_500_dens, dens_500_to_1000, dens_1000_to_1500, dens_1500_to_2000])
+            features_dict[start.text][-1].extend(
+                [less_2500_dens, dens_2500_to_5000, dens_5000_to_7500, dens_7500_to_10000])
 
             # 5. mean window amplitude
             avg_alloph_window_intensity = sum([abs(i) for i in signal_part]) / len(signal_part)
@@ -102,7 +106,64 @@ def get_allophone_statistics_for_corpus(fld_name, window_size):
 
     # TODO найти min, max, mean для признаков, записать в словарь
 
-    return allophone_stat
+    stat_distribution = {}
+
+    field_names = ["zero_cr", "autocor_zero_cr", "sp_peaks_num_before_5000", "sp_peaks_num_after_5000",
+                   "less_500_dens", "dens_500_to_1000", "dens_1000_to_1500", "dens_1500_to_2000",
+                   "less_2500_dens", "dens_2500_to_5000", "dens_5000_to_7500", "dens_7500_to_10000", "avg_intensity",
+                   "max_intensity"]
+
+    for key, value in allophone_stat.items():
+        stat_distribution[key] = {}
+        for j, name in enumerate(field_names):
+            stat_distribution[key][name] = [v[j] for v in value[1:]]
+
+    stat_distribution_by_classes = {
+        "vowels": {},
+        "sonorants": {},
+        "voiceless_stops": {},
+        "fricative": {},
+        "other": {}
+    }
+    vowels = ('a', 'e', 'i', 'u', 'o', 'y')
+    sonorants = ('l', 'm', 'n', 'r', 'v', "l'", "m'", "n'", "r'", "v'", 'j')
+    voiceless_stops = ('p', 't', 'k', "p'", "k'")
+    fricative = ('z', 'z', 'zh', 's', 'f', 'h', "s'", "f'", "h'", 'ch', 'sh', 'sc', "t'", "d'", "c", "CH")
+    other = ('b', 'd', "b'")
+
+    for key, value in allophone_stat.items():
+        new_key = "other"
+        if key.startswith(vowels):
+            new_key = "vowels"
+        elif key in sonorants:
+            new_key = "sonorants"
+        elif key in voiceless_stops:
+            new_key = "voiceless_stops"
+        elif key in fricative:
+            new_key = "fricative"
+
+        for j, name in enumerate(field_names):
+            if name not in stat_distribution_by_classes[new_key].keys():
+                stat_distribution_by_classes[new_key][name] = [v[j] for v in value[1:]]
+            else:
+                stat_distribution_by_classes[new_key][name].extend([v[j] for v in value[1:]])
+
+    stat_distrib_hisograms_by_classes = {}
+    for key, value in stat_distribution_by_classes.items():
+        for inner_key, inner_value in stat_distribution_by_classes[key].items():
+            if key not in stat_distrib_hisograms_by_classes.keys():
+                stat_distrib_hisograms_by_classes[key] = {}
+            stat_distrib_hisograms_by_classes[key][inner_key] = np.histogram(stat_distribution_by_classes[key][inner_key])
+
+    stat_distrib_hisograms_by_allophones = {}
+    for key, value in stat_distribution.items():
+        for inner_key, inner_value in stat_distribution[key].items():
+            if key not in stat_distrib_hisograms_by_allophones.keys():
+                stat_distrib_hisograms_by_allophones[key] = {}
+            stat_distrib_hisograms_by_allophones[key][inner_key] = np.histogram(stat_distribution[key][inner_key])
+
+    return stat_distrib_hisograms_by_classes, stat_distrib_hisograms_by_allophones
+
 
 seg_b1 = Seg(r"D:\pycharm_projects\word_segmentator\test_data\source_data\cta0004.seg")
 signal_ = Signal(r"D:\pycharm_projects\word_segmentator\test_data\source_data\cta0004.sbl")
@@ -112,7 +173,14 @@ window_size = 0.04
 # features_dict = get_statistics_from_b1(seg_b1, signal_, 0.04)
 
 
-get_allophone_statistics_for_corpus(fld_name, window_size)
+stat_distrib_hisograms_by_classes, stat_distrib_hisograms_by_allophones = get_allophone_statistics_for_corpus(fld_name, window_size)
+
+# TODO histograms are ndarray, not serializable
+with open("stat_distrib_hisograms_by_classes.json", 'w') as f:
+    json.dump(stat_distrib_hisograms_by_classes, f)
+
+with open("stat_distrib_hisograms_by_allophones.json", 'w') as f:
+    json.dump(stat_distrib_hisograms_by_allophones, f)
 
 
 # vowels_ = tuple(['a', 'o', 'e', 'u', 'y', 'i'])
