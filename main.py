@@ -300,7 +300,7 @@ def main(wav_fn, text_fn) -> None:
     print(f"Границы слов записаны в файл {new_seg_fn}")
 
 
-wav_fn = r"D:\pycharm_projects\word_segmentator\test_data\cta0004.wav"
-text_fn = r"D:\pycharm_projects\word_segmentator\test_data\cta0004.txt"
+wav_fn = r"D:\pycharm_projects\word_segmentator\data\source_data\cta0004.wav"
+text_fn = r"D:\pycharm_projects\word_segmentator\data\source_data\cta0004.txt"
 
 main(wav_fn, text_fn)

@@ -1,24 +1,20 @@
-import math
-from audioop import cross
 from copy import deepcopy
 
 import numpy as np
-from matplotlib import pyplot as plt
 from numpy import mean
-from scipy import signal as sc_signal
-from scipy.fft import rfft, rfftfreq
+
 from scipy.signal import find_peaks, correlate
 
-from utils.json_utils import get_object_from_json
+from get_statistics_for_allophones import get_spectral_density_distribution, get_zero_cross_rate, define_classes_probabilities_for_window
 from utils.signal_classes import Signal, Label, Seg
 
 
 def get_zeros(wav_signal: list, N_wind):
-  sig_len = len(wav_signal)
-  res = int(sig_len % (N_wind // 2))
-  num_zeros = int(N_wind / 2 - res)
-  wav_signal.extend(np.zeros(num_zeros))
-  return wav_signal
+    sig_len = len(wav_signal)
+    res = int(sig_len % (N_wind // 2))
+    num_zeros = int(N_wind / 2 - res)
+    wav_signal.extend(np.zeros(num_zeros))
+    return wav_signal
 
 
 def detect_pauses_2(filename: str, labels: list = [], config: dict = {}):
@@ -69,8 +65,10 @@ def detect_pauses_2(filename: str, labels: list = [], config: dict = {}):
     indexes_to_delete = []
     n = 1
     for label1, label2 in zip(labels_united[1:], labels_united[2:]):
-        if ((label1.text == "voiced" and (label2.position - label1.position) / wav_signal.params.samplerate < 0.04) # min_alloph_duration
-                or (label1.text == "pause" and (label2.position - label1.position) / wav_signal.params.samplerate < 0.15)):
+        if ((label1.text == "voiced" and (
+                label2.position - label1.position) / wav_signal.params.samplerate < 0.04)  # min_alloph_duration
+                or (label1.text == "pause" and (
+                        label2.position - label1.position) / wav_signal.params.samplerate < 0.15)):
             if n < len(labels_united) - 1:
                 indexes_to_delete.append(n)
                 indexes_to_delete.append(n + 1)
@@ -86,8 +84,9 @@ def detect_pauses_2(filename: str, labels: list = [], config: dict = {}):
     new_seg.write_seg_file()
     print(f"Границы слов записаны в файл {new_seg_fn}")
 
+
 # config = get_object_from_json(r"D:\pycharm_projects\word_segmentator\config.json")
-# detect_pauses_2(r"D:\pycharm_projects\word_segmentator\test_data\av15t.wav", [], config)
+# detect_pauses_2(r"D:\pycharm_projects\word_segmentator\data\av15t.wav", [], config)
 
 
 def detect_pauses(signal: Signal, labels: list = [], config: dict = {}):
@@ -127,44 +126,12 @@ def detect_pauses(signal: Signal, labels: list = [], config: dict = {}):
     return labels
 
 
-def get_spectral_density_distribution(signal, samplerate) -> dict:
-    num_samples = len(signal)
-    sig_wind = signal * sc_signal.windows.hamming(num_samples)
-    yf = rfft(sig_wind) / 0.5
-    xf = rfftfreq(num_samples, 1 / samplerate)
-    yf_mod = [i.real for i in yf]
-
-    distribution_dict = {}
-
-    for i in range(
-            int(max(xf) // 250) + 1):  # считаем суммарную плотность на каждые 250 Гц до максимальной частоты в спектре
-        distribution_dict[i] = []
-
-    for i in range(len(xf)):
-        distribution_dict[int(xf[i] // 250)].append(yf_mod[i])
-
-    for key, value in distribution_dict.items():
-        density = sum(list(map(lambda n: abs(n), value))) ** 2
-        density_log = math.log(density) if density != 0.0 else 0
-        distribution_dict[key] = round(density_log, 2)
-
-    return distribution_dict
-
-
 def unite_label_clusters(labels: list[Label]):
     new_labels = [labels[0]]
     for i, label in enumerate(labels[1: -1]):
         if label.text != new_labels[-1].text and labels[i + 1].text == label.text:
             new_labels.append(label)
     return new_labels
-
-
-def get_zero_cross_rate(signal_part):
-    zero_crossing_rate = 0
-    for el1, el2 in zip(signal_part, signal_part[1:]):
-        if el1 * el2 < 0:
-            zero_crossing_rate += 1
-    return zero_crossing_rate
 
 
 def detect_allophone_classes(signal: Signal, labels: list[Label] = [], config: dict = {}):
@@ -189,6 +156,8 @@ def detect_allophone_classes(signal: Signal, labels: list[Label] = [], config: d
                 new_label_position = int(i * N) + start.position
                 signal_part = syntagma[i * N: (i + 1) * N]
 
+                probabilities = define_classes_probabilities_for_window(signal_part)
+
                 max_part_ampl = max([abs(i) for i in signal_part])
                 sig_part_spectral_density_distribution = get_spectral_density_distribution(signal_part, samplerate)
 
@@ -204,7 +173,6 @@ def detect_allophone_classes(signal: Signal, labels: list[Label] = [], config: d
 
                 number_of_peaks_before_5000 = len([x for x in peaks[0] if x < len(sp_density) / 2])
                 number_of_peaks_after_5000 = len([x for x in peaks[0] if x >= len(sp_density) / 2])
-
 
                 less_250_dens = round(sp_density[0], 2)
                 dens_250_to_500 = round(sp_density[1], 2)
@@ -227,7 +195,7 @@ def detect_allophone_classes(signal: Signal, labels: list[Label] = [], config: d
                 # sec_half_sum = sum(sp_density[len(sp_density) // 2 : ])
                 intensity_by_sample = sum([abs(i) for i in signal_part]) / len(signal_part)
                 text_label = f"{(round(less_2500_dens, 2) + round(dens_2500_to_5000, 2)) / (round(dens_5000_to_7500, 2) + round(dens_7500_to_10000, 2))}"
-                if max_part_ampl / max_syntagma_ampl < config_["threshold"]:        # voiceless stops
+                if max_part_ampl / max_syntagma_ampl < config_["threshold"]:  # voiceless stops
                     text_label = f"stop (voiceless)"
                 elif zero_crossing_rate > 15 or less_2500_dens < dens_5000_to_7500:
                     # text_label = f"fricative {less_2500_dens} {dens_2500_to_5000} {dens_5000_to_7500} {dens_7500_to_10000}"
@@ -236,7 +204,7 @@ def detect_allophone_classes(signal: Signal, labels: list[Label] = [], config: d
                     # low vowel or sonorant
                     # text_label = f"vowel or sonorant {x} {y} {less_250_dens} {dens_250_to_500} {dens_500_to_750} {dens_750_to_1000}"
                     text_label = f"vowel or sonorant"
-                else: # else other
+                else:  # else other
                     # text_label = f"other cons {x} {y} {less_250_dens} {dens_250_to_500} {dens_500_to_750} {dens_750_to_1000}"
                     text_label = f"other periodic cons"
                 new_label = Label(new_label_position, "R1", text_label)

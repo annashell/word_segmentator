@@ -1,4 +1,5 @@
 import glob
+import math
 
 import numpy as np
 from scipy import signal
@@ -6,9 +7,40 @@ from scipy.fft import rfft, rfftfreq
 from scipy.signal import correlate, find_peaks
 from scipy.stats import stats
 
-from sig_analysis import get_spectral_density_distribution, get_zero_cross_rate
 from utils.json_utils import write_object_to_json, get_object_from_json
 from utils.signal_classes import Seg, Signal
+
+
+def get_zero_cross_rate(signal_part):
+    zero_crossing_rate = 0
+    for el1, el2 in zip(signal_part, signal_part[1:]):
+        if el1 * el2 < 0:
+            zero_crossing_rate += 1
+    return zero_crossing_rate
+
+
+def get_spectral_density_distribution(signal_, samplerate) -> dict:
+    num_samples = len(signal_)
+    sig_wind = signal_ * signal.windows.hamming(num_samples)
+    yf = rfft(sig_wind) / 0.5
+    xf = rfftfreq(num_samples, 1 / samplerate)
+    yf_mod = [i.real for i in yf]
+
+    distribution_dict = {}
+
+    for i in range(
+            int(max(xf) // 250) + 1):  # считаем суммарную плотность на каждые 250 Гц до максимальной частоты в спектре
+        distribution_dict[i] = []
+
+    for i in range(len(xf)):
+        distribution_dict[int(xf[i] // 250)].append(yf_mod[i])
+
+    for key, value in distribution_dict.items():
+        density = sum(list(map(lambda n: abs(n), value))) ** 2
+        density_log = math.log(density) if density != 0.0 else 0
+        distribution_dict[key] = round(density_log, 2)
+
+    return distribution_dict
 
 
 def get_statistics_from_b1(seg_b1: Seg, signal_: Signal, window_size: float):
@@ -153,7 +185,8 @@ def get_allophone_statistics_for_corpus(fld_name, window_size):
         for inner_key, inner_value in stat_distribution_by_classes[key].items():
             if key not in stat_distrib_histograms_by_classes.keys():
                 stat_distrib_histograms_by_classes[key] = {}
-            stat_distrib_histograms_by_classes[key][inner_key] = np.histogram(stat_distribution_by_classes[key][inner_key])
+            stat_distrib_histograms_by_classes[key][inner_key] = np.histogram(
+                stat_distribution_by_classes[key][inner_key])
 
     stat_distrib_histograms_by_allophones = {}
     for key, value in stat_distribution.items():
@@ -164,24 +197,25 @@ def get_allophone_statistics_for_corpus(fld_name, window_size):
 
     return stat_distrib_histograms_by_classes, stat_distrib_histograms_by_allophones
 
+
 def write_stat_json(fld_name, window_size):
     stat_distrib_histograms_by_classes, stat_distrib_histograms_by_allophones = get_allophone_statistics_for_corpus(
         fld_name, window_size)
 
-    write_object_to_json(stat_distrib_histograms_by_classes, "stats/stat_distrib_histograms_by_classes.json")
-    write_object_to_json(stat_distrib_histograms_by_allophones, "stats/stat_distrib_histograms_by_allophones.json")
+    write_object_to_json(stat_distrib_histograms_by_classes, "data/stats/stat_distrib_histograms_by_allophones.json")
+    write_object_to_json(stat_distrib_histograms_by_allophones, "data/stats/stat_distrib_histograms_by_allophones.json")
 
 
 def define_classes_probabilities_for_window(signal_part):
-    classes_stat_json = "stats/stat_distrib_histograms_by_classes.json"
+    classes_stat_json = "data/stats/stat_distrib_histograms_by_classes.json"
     stats = get_object_from_json(classes_stat_json)
 
-    pass
+    probabilities = {}
+
+    return probabilities
 
 
 fld_name = r"D:\corpora\corpres\cta"
 window_size = 0.04
 
-write_stat_json(fld_name, window_size)
-
-
+# write_stat_json(fld_name, window_size)
