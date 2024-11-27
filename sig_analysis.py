@@ -156,7 +156,10 @@ def detect_allophone_classes(signal: Signal, labels: list[Label] = [], config: d
                 new_label_position = int(i * N) + start.position
                 signal_part = syntagma[i * N: (i + 1) * N]
 
-                probabilities = define_classes_probabilities_for_window(signal_part)
+                probabilities, avg_probabilities, prob_by_rel_interval = define_classes_probabilities_for_window(signal_part, samplerate, avg_syntagma_intensity)
+
+                most_probable_ind = list(avg_probabilities.values()).index(max(list(avg_probabilities.values())))
+                most_probable = list(avg_probabilities.keys())[most_probable_ind]
 
                 max_part_ampl = max([abs(i) for i in signal_part])
                 sig_part_spectral_density_distribution = get_spectral_density_distribution(signal_part, samplerate)
@@ -194,19 +197,25 @@ def detect_allophone_classes(signal: Signal, labels: list[Label] = [], config: d
                 # first_half_sum = sum(sp_density[: len(sp_density) // 2])
                 # sec_half_sum = sum(sp_density[len(sp_density) // 2 : ])
                 intensity_by_sample = sum([abs(i) for i in signal_part]) / len(signal_part)
-                text_label = f"{(round(less_2500_dens, 2) + round(dens_2500_to_5000, 2)) / (round(dens_5000_to_7500, 2) + round(dens_7500_to_10000, 2))}"
+                vowel_prob = avg_probabilities["vowels"]
+                son_prob = avg_probabilities["sonorants"]
+                st_prob = avg_probabilities["voiceless_stops"]
+                fr_prob = avg_probabilities["fricative"]
+                other_prob = avg_probabilities["other"]
+                text_stat = f"v {vowel_prob} s {son_prob} st {st_prob} fr {fr_prob} o {other_prob}"
+                text_stat = most_probable
                 if max_part_ampl / max_syntagma_ampl < config_["threshold"]:  # voiceless stops
-                    text_label = f"stop (voiceless)"
+                    text_label = f"stop (voiceless) {text_stat}"
                 elif zero_crossing_rate > 15 or less_2500_dens < dens_5000_to_7500:
                     # text_label = f"fricative {less_2500_dens} {dens_2500_to_5000} {dens_5000_to_7500} {dens_7500_to_10000}"
-                    text_label = f"fricative"
+                    text_label = f"fricative {text_stat}"
                 elif number_of_peaks_before_5000 >= 3 and less_2500_dens > dens_5000_to_7500:
                     # low vowel or sonorant
                     # text_label = f"vowel or sonorant {x} {y} {less_250_dens} {dens_250_to_500} {dens_500_to_750} {dens_750_to_1000}"
-                    text_label = f"vowel or sonorant"
+                    text_label = f"vowel or sonorant {text_stat}"
                 else:  # else other
                     # text_label = f"other cons {x} {y} {less_250_dens} {dens_250_to_500} {dens_500_to_750} {dens_750_to_1000}"
-                    text_label = f"other periodic cons"
+                    text_label = f"other periodic cons {text_stat}"
                 new_label = Label(new_label_position, "R1", text_label)
                 new_labels_clusters.append(new_label)
             new_label_right = Label(new_label_position + N, "R1", "")
