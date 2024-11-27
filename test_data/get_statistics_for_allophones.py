@@ -148,75 +148,55 @@ def get_allophone_statistics_for_corpus(fld_name, window_size):
             else:
                 stat_distribution_by_classes[new_key][name].extend([v[j] for v in value[1:]])
 
-    stat_distrib_hisograms_by_classes = {}
+    stat_distrib_histograms_by_classes = {}
     for key, value in stat_distribution_by_classes.items():
         for inner_key, inner_value in stat_distribution_by_classes[key].items():
-            if key not in stat_distrib_hisograms_by_classes.keys():
-                stat_distrib_hisograms_by_classes[key] = {}
-            stat_distrib_hisograms_by_classes[key][inner_key] = np.histogram(stat_distribution_by_classes[key][inner_key])
+            if key not in stat_distrib_histograms_by_classes.keys():
+                stat_distrib_histograms_by_classes[key] = {}
+            stat_distrib_histograms_by_classes[key][inner_key] = np.histogram(stat_distribution_by_classes[key][inner_key])
 
-    stat_distrib_hisograms_by_allophones = {}
+    stat_distrib_histograms_by_allophones = {}
     for key, value in stat_distribution.items():
         for inner_key, inner_value in stat_distribution[key].items():
-            if key not in stat_distrib_hisograms_by_allophones.keys():
-                stat_distrib_hisograms_by_allophones[key] = {}
-            stat_distrib_hisograms_by_allophones[key][inner_key] = np.histogram(stat_distribution[key][inner_key])
+            if key not in stat_distrib_histograms_by_allophones.keys():
+                stat_distrib_histograms_by_allophones[key] = {}
+            stat_distrib_histograms_by_allophones[key][inner_key] = np.histogram(stat_distribution[key][inner_key])
 
-    return stat_distrib_hisograms_by_classes, stat_distrib_hisograms_by_allophones
+    return stat_distrib_histograms_by_classes, stat_distrib_histograms_by_allophones
 
 
-seg_b1 = Seg(r"D:\pycharm_projects\word_segmentator\test_data\source_data\cta0004.seg")
-signal_ = Signal(r"D:\pycharm_projects\word_segmentator\test_data\source_data\cta0004.sbl")
+class NpEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, np.integer):
+            return int(obj)
+        if isinstance(obj, np.floating):
+            return float(obj)
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return super(NpEncoder, self).default(obj)
+
+
+def write_stat_json(fld_name, window_size):
+    stat_distrib_histograms_by_classes, stat_distrib_histograms_by_allophones = get_allophone_statistics_for_corpus(
+        fld_name, window_size)
+
+    with open("stat_distrib_histograms_by_classes.json", 'w') as f:
+        json.dump(stat_distrib_histograms_by_classes, f, cls=NpEncoder)
+
+    with open("stat_distrib_histograms_by_allophones.json", 'w') as f:
+        json.dump(stat_distrib_histograms_by_allophones, f, cls=NpEncoder)
+
+
+def define_classes_probabilities_for_window(signal_part):
+    classes_stat_json = "stat_distrib_histograms_by_classes.json"
+    with open(classes_stat_json) as f:
+        stats = json.load(f)
+    pass
+
+
 fld_name = r"D:\corpora\corpres\cta"
 window_size = 0.04
 
-# features_dict = get_statistics_from_b1(seg_b1, signal_, 0.04)
+write_stat_json(fld_name, window_size)
 
 
-stat_distrib_hisograms_by_classes, stat_distrib_hisograms_by_allophones = get_allophone_statistics_for_corpus(fld_name, window_size)
-
-# TODO histograms are ndarray, not serializable
-with open("stat_distrib_hisograms_by_classes.json", 'w') as f:
-    json.dump(stat_distrib_hisograms_by_classes, f)
-
-with open("stat_distrib_hisograms_by_allophones.json", 'w') as f:
-    json.dump(stat_distrib_hisograms_by_allophones, f)
-
-
-# vowels_ = tuple(['a', 'o', 'e', 'u', 'y', 'i'])
-# sonorants_ = tuple(['n', 'm', 'l', 'r', 'v', 'j'])
-#
-# vowels = [key for key in list(features_dict.keys()) if key.startswith(vowels_)]
-# sonorarnts = [key for key in list(features_dict.keys()) if key.startswith(sonorants_)]
-# cons = [key for key in list(features_dict.keys()) if
-#         not key.startswith(vowels_) and not key.startswith(sonorants_) and key != ""]
-#
-# for key, value in features_dict.items():
-#     if key in vowels:
-#         first_5000 = np.array([sum(x[1: 21]) for x in value])
-#         sec_5000 = np.array([sum(x[21: ]) for x in value])
-#         print("mean, max, min 1000Hz / 2000Hz spect density of ", key, round(np.mean(first_5000 / sec_5000), 2),
-#               round(max(first_5000 / sec_5000), 2), round(min(first_5000 / sec_5000), 2))
-#
-# print('\n\n')
-#
-# for key, value in features_dict.items():
-#     if key in sonorarnts:
-#         first_1000 = np.array([sum(x[1: 21]) for x in value])
-#         sec_1000 = np.array([sum(x[21: ]) for x in value])
-#         print("mean, max, min 1000Hz / 2000Hz spect density of ", key, round(np.mean(first_1000 / sec_1000), 2),
-#               round(max(first_1000 / sec_1000), 2), round(min(first_1000 / sec_1000), 2))
-#
-# print('\n\n')
-#
-# for key, value in features_dict.items():
-#     if key in cons:
-#         first_1000 = np.array([sum(x[1: 21]) for x in value])
-#         sec_1000 = np.array([sum(x[21: ]) for x in value])
-#         print("mean, max, min 1000Hz / 2000Hz spect density of ", key, round(np.mean(first_1000 / sec_1000), 2),
-#               round(max(first_1000 / sec_1000), 2), round(min(first_1000 / sec_1000), 2))
-#
-# print('\n\n')
-#
-# pause_intensities = [x[0] for x in features_dict[""]]
-# print("mean, max, min intensity of pause", np.mean(pause_intensities), max(pause_intensities), min(pause_intensities))
