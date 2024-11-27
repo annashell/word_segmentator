@@ -1,5 +1,4 @@
 import glob
-import json
 
 import numpy as np
 from scipy import signal
@@ -8,6 +7,7 @@ from scipy.signal import correlate, find_peaks
 from scipy.stats import stats
 
 from sig_analysis import get_spectral_density_distribution, get_zero_cross_rate
+from utils.json_utils import write_object_to_json, get_object_from_json
 from utils.signal_classes import Seg, Signal
 
 
@@ -164,33 +164,18 @@ def get_allophone_statistics_for_corpus(fld_name, window_size):
 
     return stat_distrib_histograms_by_classes, stat_distrib_histograms_by_allophones
 
-
-class NpEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, np.integer):
-            return int(obj)
-        if isinstance(obj, np.floating):
-            return float(obj)
-        if isinstance(obj, np.ndarray):
-            return obj.tolist()
-        return super(NpEncoder, self).default(obj)
-
-
 def write_stat_json(fld_name, window_size):
     stat_distrib_histograms_by_classes, stat_distrib_histograms_by_allophones = get_allophone_statistics_for_corpus(
         fld_name, window_size)
 
-    with open("stat_distrib_histograms_by_classes.json", 'w') as f:
-        json.dump(stat_distrib_histograms_by_classes, f, cls=NpEncoder)
-
-    with open("stat_distrib_histograms_by_allophones.json", 'w') as f:
-        json.dump(stat_distrib_histograms_by_allophones, f, cls=NpEncoder)
+    write_object_to_json(stat_distrib_histograms_by_classes, "stats/stat_distrib_histograms_by_classes.json")
+    write_object_to_json(stat_distrib_histograms_by_allophones, "stats/stat_distrib_histograms_by_allophones.json")
 
 
 def define_classes_probabilities_for_window(signal_part):
-    classes_stat_json = "stat_distrib_histograms_by_classes.json"
-    with open(classes_stat_json) as f:
-        stats = json.load(f)
+    classes_stat_json = "stats/stat_distrib_histograms_by_classes.json"
+    stats = get_object_from_json(classes_stat_json)
+
     pass
 
 
