@@ -1,12 +1,10 @@
 import glob
 import math
-from copy import deepcopy
 
 import numpy as np
 from scipy import signal
 from scipy.fft import rfft, rfftfreq
 from scipy.signal import correlate, find_peaks
-from scipy.stats import stats
 
 from utils.json_utils import write_object_to_json, get_object_from_json
 from utils.signal_classes import Seg, Signal
@@ -79,19 +77,19 @@ def get_statistics_for_window(signal_part, samplerate, avg_signal_intensity):
 
     stats = {
         "zero_cr": round(zero_crossing_rate, 2),
-        # "autocor_zero_cr": round(corr_zero_crossing, 2),
+        "autocor_zero_cr": round(corr_zero_crossing, 2),
         "sp_peaks_num_before_5000": number_of_peaks_before_5000,
         "sp_peaks_num_after_5000": number_of_peaks_after_5000,
-        # "less_500_dens": less_500_dens / dens_1000_to_1500,
+        "less_500_dens": less_500_dens / dens_1000_to_1500,
         "dens_500_to_1000": dens_500_to_1000 / dens_1000_to_1500,
-        # "dens_1000_to_1500": dens_1000_to_1500 / dens_1500_to_2000,
+        "dens_1000_to_1500": dens_1000_to_1500 / dens_1500_to_2000,
         "dens_1500_to_2000": dens_500_to_1000 / dens_1500_to_2000,
-        # "less_2500_dens": less_2500_dens / dens_5000_to_7500,
+        "less_2500_dens": less_2500_dens / dens_5000_to_7500,
         "dens_2500_to_5000": dens_2500_to_5000 / dens_5000_to_7500,
         "dens_5000_to_7500": dens_5000_to_7500 / dens_7500_to_10000,
-        # "dens_7500_to_10000": dens_2500_to_5000 / dens_7500_to_10000,
+        "dens_7500_to_10000": dens_2500_to_5000 / dens_7500_to_10000,
         "avg_intensity": round(avg_alloph_window_intensity / avg_signal_intensity, 2),
-        # "max_intensity": round(max_alloph_window_intensity / avg_signal_intensity, 2),
+        "max_intensity": round(max_alloph_window_intensity / avg_signal_intensity, 2),
     }
 
     return stats
@@ -130,7 +128,7 @@ def get_statistics_from_b1(seg_b1: Seg, signal_: Signal, window_size: float):
             # 2. autocorrelation zero-crossing
             correlation = correlate(signal_part, signal_part)
             corr_zero_crossing = (get_zero_cross_rate(correlation) / len(correlation)) * 100
-            # features_dict[start.text][-1].append(round(corr_zero_crossing, 2))
+            features_dict[start.text][-1].append(round(corr_zero_crossing, 2))
 
             # 3. spectral peaks number
             sig_part_spectral_density_distribution = get_spectral_density_distribution(signal_part,
@@ -160,17 +158,17 @@ def get_statistics_from_b1(seg_b1: Seg, signal_: Signal, window_size: float):
 
             features_dict[start.text][-1].extend(
                 [
-                    # less_500_dens / dens_1000_to_1500,
+                    less_500_dens / dens_1000_to_1500,
                     dens_500_to_1000 / dens_1000_to_1500,
-                    # dens_1000_to_1500 / dens_1500_to_2000,
+                    dens_1000_to_1500 / dens_1500_to_2000,
                     dens_500_to_1000 / dens_1500_to_2000
                 ])
             features_dict[start.text][-1].extend(
                 [
-                    # less_2500_dens / dens_5000_to_7500,
+                    less_2500_dens / dens_5000_to_7500,
                     dens_2500_to_5000 / dens_5000_to_7500,
                     dens_5000_to_7500 / dens_7500_to_10000,
-                    # dens_2500_to_5000 / dens_7500_to_10000
+                    dens_2500_to_5000 / dens_7500_to_10000
                 ])
 
             # 5. mean window amplitude
@@ -178,8 +176,8 @@ def get_statistics_from_b1(seg_b1: Seg, signal_: Signal, window_size: float):
             features_dict[start.text][-1].append(round(avg_alloph_window_intensity / avg_signal_intensity, 2))
 
             # 6. max window amplitude
-            # max_alloph_window_intensity = max([abs(i) for i in signal_part])
-            # features_dict[start.text][-1].append(round(max_alloph_window_intensity / avg_signal_intensity, 2))
+            max_alloph_window_intensity = max([abs(i) for i in signal_part])
+            features_dict[start.text][-1].append(round(max_alloph_window_intensity / avg_signal_intensity, 2))
 
     return features_dict
 
@@ -200,25 +198,23 @@ def get_allophone_statistics_for_corpus(fld_name, window_size):
             else:
                 allophone_stat[key] = [value]
 
-    # TODO найти min, max, mean для признаков, записать в словарь
-
     stat_distribution = {}
 
     field_names = [
         "zero_cr",
-        # "autocor_zero_cr",
+        "autocor_zero_cr",
         "sp_peaks_num_before_5000",
         "sp_peaks_num_after_5000",
-        # "less_500_dens",
+        "less_500_dens",
         "dens_500_to_1000",
-        # "dens_1000_to_1500",
+        "dens_1000_to_1500",
         "dens_1500_to_2000",
-        # "less_2500_dens",
+        "less_2500_dens",
         "dens_2500_to_5000",
         "dens_5000_to_7500",
-        # "dens_7500_to_10000",
+        "dens_7500_to_10000",
         "avg_intensity",
-        # "max_intensity"
+        "max_intensity"
     ]
 
     for key, value in allophone_stat.items():
@@ -227,24 +223,23 @@ def get_allophone_statistics_for_corpus(fld_name, window_size):
             stat_distribution[key][name] = [v[j] for v in value[1:]]
 
     stat_distribution_by_classes = {
-        "vowels": {},
-        "sonorants": {},
+        "vowels or sonorants": {},
         "voiceless_stops": {},
         "fricative": {},
         "other": {}
     }
     vowels = ('a', 'e', 'i', 'u', 'o', 'y')
-    sonorants = ('l', 'm', 'n', 'r', 'v', "l'", "m'", "n'", "r'", "v'", 'j')
+    sonorants = ('l', 'm', 'n', 'v', "l'", "m'", "n'", "v'", "r'")
     voiceless_stops = ('p', 't', 'k', "p'", "k'")
-    fricative = ('z', 'z', 'zh', 's', 'f', 'h', "s'", "f'", "h'", 'ch', 'sh', 'sc', "t'", "d'", "c", "CH")
+    fricative = ('z', 'z', 'zh', 's', 'f', 'h', "s'", "f'", "h'", 'ch', 'sh', 'sc', "t'", "d'", "c", "CH", 'j', 'r')
     other = ('b', 'd', "b'")
 
     for key, value in allophone_stat.items():
         new_key = "other"
         if key.startswith(vowels):
-            new_key = "vowels"
+            new_key = "vowels or sonorants"
         elif key in sonorants:
-            new_key = "sonorants"
+            new_key = "vowels or sonorants"
         elif key in voiceless_stops:
             new_key = "voiceless_stops"
         elif key in fricative:
@@ -331,11 +326,11 @@ def define_classes_probabilities_for_window(signal_part, samplerate, avg_signal_
             probabilities[key][inner_key] = probability
             prob_sum += probability
             is_in_reliable_interval = detect_if_is_in_reliable_interval(histogram, window_stats[inner_key], 0.9)
+            reliable_int_count += is_in_reliable_interval
         if 0 in probabilities[key].values():
             avg_probabilities[key] = 0
         else:
             avg_probabilities[key] = prob_sum / len(probabilities[key].keys())
-        reliable_int_count += is_in_reliable_interval
         prob_by_rel_interval[key] = reliable_int_count/len(list(stats[key].keys()))
 
     return probabilities, avg_probabilities, prob_by_rel_interval

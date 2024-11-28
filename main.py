@@ -98,10 +98,10 @@ def process_text(text: str) -> (list, list):
     """
     latin_txt = translate_to_latin(text)  # точка для добавления паузы в начале
 
-    vowels_and_sonorant = ('a', 'e', 'i', 'u', 'o', 'y', 'l', 'm', 'n', 'r', 'v', "l'", "m'", "n'", "r'", "v'")
-    voiceless_stops = ('p', 't', 'k', "p'", "k'")
-    fricative = ('z', 'z', 'zh', 's', 'f', 'h', "s'", "f'", "h'", 'ch', 'sh', 'sc', "t'", "d'", "c")
-    other = ('b', 'd')
+    vowels_and_sonorant = ('a', 'e', 'i', 'u', 'o', 'y', 'l', 'm', 'n', 'v', "l'", "m'", "n'", "r'", "v'")
+    stops = ('p', 't', 'k', "p'", "k'", "t'", "d'", "c")
+    fricative = ('z', "z'", 'zh', 's', 'f', 'h', "s'", "f'", "h'", 'ch', 'sh', 'sc', 'r', 'j')
+    other = ('b', 'd', "b'")
 
     clusters = [(0, 9)]
     word_boundaries_indexes = [0]
@@ -113,8 +113,9 @@ def process_text(text: str) -> (list, list):
             clusters.append((i, 0))
         elif ch in fricative and clusters[-1][1] != 1:
             clusters.append((i, 1))
-        elif ch in voiceless_stops and clusters[-1][1] != 2:
+        elif ch in stops and clusters[-1][1] != 2:
             clusters.append((i, 2))
+            clusters.append((i, 1))
         elif ch in other and clusters[-1][1] != 3:
             clusters.append((i, 3))
 
