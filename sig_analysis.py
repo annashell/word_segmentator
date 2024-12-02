@@ -89,7 +89,7 @@ def detect_pauses_2(filename: str, labels: list = [], config: dict = {}):
 # detect_pauses_2(r"D:\pycharm_projects\word_segmentator\data\av15t.wav", [], config)
 
 
-def detect_pauses(signal: Signal, labels: list = [], config: dict = {}):
+def detect_pauses(signal_: Signal, labels: list = [], config: dict = {}):
     """
 
     :param signal:
@@ -100,16 +100,16 @@ def detect_pauses(signal: Signal, labels: list = [], config: dict = {}):
     config_ = config["pause_detection_parameters"]
 
     N = int(
-        config_["window_size"] * signal.params.samplerate // signal.params.sampwidth)  # окно анализа в отсчетах
-    max_signal_ampl = max([abs(i) for i in signal.signal])
+        config_["window_size"] * signal_.params.samplerate // signal_.params.sampwidth)  # окно анализа в отсчетах
+    max_signal_ampl = max([abs(i) for i in signal_.signal])
     fictive_pause = [0 for i in range(
-        int(config_["min_pause_duration"] * signal.params.samplerate * 2))]
-    signal_ = fictive_pause + list(signal.signal)
-    for i in range(len(signal_) // N):
-        signal_part = signal_[i * N: i * N + N]
+        int(config_["min_pause_duration"] * signal_.params.samplerate * 2))]
+    signal_wp = fictive_pause + list(signal_.signal)
+    for i in range(len(signal_wp) // N):
+        signal_part = signal_wp[i * N: i * N + N]
         mean_part_ampl = mean([abs(i) for i in signal_part])
         new_label_position = int(i * N - len(fictive_pause))
-        to_prev_label_time_distance = (new_label_position - labels[-1].position) / signal.params.samplerate
+        to_prev_label_time_distance = (new_label_position - labels[-1].position) / signal_.params.samplerate
         if mean_part_ampl < config_["threshold"] * max_signal_ampl:
             if labels[-1].text != 'pause':
                 if (to_prev_label_time_distance > config_["min_alloph_duration"]
@@ -123,6 +123,8 @@ def detect_pauses(signal: Signal, labels: list = [], config: dict = {}):
                 labels.append(Label(new_label_position, "Y1", 'new_synt'))
             elif len(labels) > 2:
                 labels.pop(len(labels) - 1)
+
+    labels = list(filter(lambda x: x.position >= 0, labels))
     return labels
 
 
@@ -141,7 +143,7 @@ def detect_allophone_classes(signal: Signal, labels: list[Label] = [], config: d
     new_labels = deepcopy(labels)
     new_labels_clusters = []
     for start, end in zip(labels, labels[1:]):
-        if start.text != "pause" and start.text != "begin":
+        if start.text != "pause":
             syntagma = signal.signal[start.position: end.position]
             # synt_spectral_density_distribution = get_spectral_density_distribution(syntagma, samplerate)
             max_syntagma_ampl = max([abs(i) for i in syntagma])
@@ -156,14 +158,6 @@ def detect_allophone_classes(signal: Signal, labels: list[Label] = [], config: d
                 new_label_position = int(i * N) + start.position
                 signal_part = syntagma[i * N: (i + 1) * N]
 
-                probabilities, avg_probabilities, prob_by_rel_interval = define_classes_probabilities_for_window(signal_part, samplerate, avg_syntagma_intensity)
-                max_rel_interval_probability = max(list(prob_by_rel_interval.values()))
-                probable_classes = [key for key in prob_by_rel_interval.keys() if prob_by_rel_interval[key] == max_rel_interval_probability]
-
-                most_probable_ind = list(avg_probabilities.values()).index(max([value for key, value in avg_probabilities.items() if key in probable_classes]))
-                most_probable = list(avg_probabilities.keys())[most_probable_ind]
-
-                max_part_ampl = max([abs(i) for i in signal_part])
                 sig_part_spectral_density_distribution = get_spectral_density_distribution(signal_part, samplerate)
 
                 zero_crossing_rate = (get_zero_cross_rate(signal_part) / len(signal_part)) * 100
@@ -200,17 +194,43 @@ def detect_allophone_classes(signal: Signal, labels: list[Label] = [], config: d
                 # sec_half_sum = sum(sp_density[len(sp_density) // 2 : ])
                 intensity_by_sample = sum([abs(i) for i in signal_part]) / len(signal_part)
                 # vowel_prob = avg_probabilities["vowels"]
+                mean_part_ampl = mean([abs(i) for i in signal_part])
+
+                probabilities, avg_probabilities, prob_by_rel_interval = define_classes_probabilities_for_window(
+                    signal_part, samplerate, avg_syntagma_intensity)
+                min_rel_interval_probability = min(list(prob_by_rel_interval.values()))
+                probable_classes = [key for key in prob_by_rel_interval.keys() if
+                                    prob_by_rel_interval[key] != min_rel_interval_probability]
+
+                probable_classes = ["fricative", "voiceless_stops", "other", "vowels or sonorants"]
+
+                if zero_crossing_rate < 10 and "fricative" in probable_classes:
+                    ind = probable_classes.index("fricative")
+                    probable_classes.pop(ind)
+
+                if mean_part_ampl / max_syntagma_ampl > config_["threshold"] and "voiceless_stops" in probable_classes:
+                    ind = probable_classes.index("voiceless_stops")
+                    probable_classes.pop(ind)
+
+                # if len(probable_classes) == 0:
+                #     probable_classes.append("vowels or sonorants")
+
+                most_probable_ind = list(avg_probabilities.values()).index(
+                    max([value for key, value in avg_probabilities.items() if key in probable_classes]))
+                most_probable = list(avg_probabilities.keys())[most_probable_ind]
+
                 vow_son_prob = avg_probabilities["vowels or sonorants"]
                 st_prob = avg_probabilities["voiceless_stops"]
                 fr_prob = avg_probabilities["fricative"]
                 other_prob = avg_probabilities["other"]
                 text_stat = f"v-s {vow_son_prob} st {st_prob} fr {fr_prob} o {other_prob}"
-                text_label = most_probable
-                if max_part_ampl / max_syntagma_ampl < config_["threshold"]:  # voiceless stops
-                    text_label = f"voiceless_stops"
-                elif zero_crossing_rate > 30:
+                text_label = f"{most_probable} {mean_part_ampl / max_syntagma_ampl} {zero_crossing_rate}"
+                text_label = f"{most_probable}"
+                if zero_crossing_rate > 15:
                     # text_label = f"fricative {less_2500_dens} {dens_2500_to_5000} {dens_5000_to_7500} {dens_7500_to_10000}"
                     text_label = f"fricative"
+                elif mean_part_ampl / max_syntagma_ampl < config_["threshold"]:  # voiceless stops
+                    text_label = f"voiceless_stops"
                 # elif number_of_peaks_before_5000 >= 3 and less_2500_dens > dens_5000_to_7500:
                 #     # low vowel or sonorant
                 #     # text_label = f"vowel or sonorant {x} {y} {less_250_dens} {dens_250_to_500} {dens_500_to_750} {dens_750_to_1000}"
@@ -224,6 +244,15 @@ def detect_allophone_classes(signal: Signal, labels: list[Label] = [], config: d
             new_labels_clusters.append(new_label_right)
 
     new_labels_clusters = unite_label_clusters(new_labels_clusters)
+
+    for label1, label2, label3 in zip(new_labels_clusters, new_labels_clusters[1:], new_labels_clusters[2:]):
+        if label2.text == "voiceless_stops" and label3.text == "":
+            label2.text = label1.text
+        elif label2.text == "voiceless_stops" and label1.text == "":
+            label2.text = label3.text
+
+    new_labels_clusters = unite_label_clusters(new_labels_clusters)
+
     new_labels = new_labels + new_labels_clusters
 
     return new_labels

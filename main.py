@@ -98,25 +98,29 @@ def process_text(text: str) -> (list, list):
     """
     latin_txt = translate_to_latin(text)  # точка для добавления паузы в начале
 
-    vowels_and_sonorant = ('a', 'e', 'i', 'u', 'o', 'y', 'l', 'm', 'n', 'v', "l'", "m'", "n'", "r'", "v'")
-    stops = ('p', 't', 'k', "p'", "k'", "t'", "d'", "c")
-    fricative = ('z', "z'", 'zh', 's', 'f', 'h', "s'", "f'", "h'", 'ch', 'sh', 'sc', 'r', 'j')
-    other = ('b', 'd', "b'")
+    vowels_and_sonorant = ('a', 'e', 'i', 'u', 'o', 'y', 'l', 'm', 'n', 'v', "l'", "m'", "n'", "r'", "v'", "r", "j")
+    stops = ('p', 't', 'k')
+    affricates = ("p'", "k'", "t'", "d'", "c")
+    fricative = ('z', "z'", 'zh', 's', 'f', 'h', "s'", "f'", "h'", 'ch', 'sh', 'sc', "CH", "ch_", "zh'")
+    other = ('b', 'd', "b'", 'g', "g'")
 
     clusters = [(0, 9)]
     word_boundaries_indexes = [0]
 
-    for i, ch in enumerate(latin_txt.lower().strip().split()):
+    txt_arr = latin_txt.lower().strip().split()
+    for i, ch in enumerate(txt_arr):
         if ch == '0':
             word_boundaries_indexes.append(i)  # -1 из-за границы слова в начале
         elif ch in vowels_and_sonorant and clusters[-1][1] != 0:
             clusters.append((i, 0))
-        elif ch in fricative and clusters[-1][1] != 1:
+        elif ch in fricative and (clusters[-1][1] != 1 or (i != 0 and txt_arr[i - 1] == "0")):
             clusters.append((i, 1))
-        elif ch in stops and clusters[-1][1] != 2:
+        elif ch in stops and (clusters[-1][1] != 2 or (i != 0 and txt_arr[i - 1] == "0")):
+            clusters.append((i, 2))
+        elif ch in affricates and (clusters[-1][1] != 2 or (i != 0 and txt_arr[i - 1] == "0")):
             clusters.append((i, 2))
             clusters.append((i, 1))
-        elif ch in other and clusters[-1][1] != 3:
+        elif ch in other and (clusters[-1][1] != 3 or (i != 0 and txt_arr[i - 1] == "0")):
             clusters.append((i, 3))
 
     clusters = clusters[1:]
@@ -124,19 +128,22 @@ def process_text(text: str) -> (list, list):
 
 
 lbl_to_str_dict = {
-    "": "",
+    "": "4",
     "fricative": "1",
-    "vowel or sonorant": "0",
-    "other cons": "3",
-    "stop (voiceless)": "2",
+    "vowels or sonorants": "0",
+    "other": "3",
+    "voiceless_stops": "2",
     "begin": "",
     "new_synt": "",
     "pause": "4"
 }
 
+def nearest(lst, target):
+    return min(lst, key=lambda x: abs(x - target))
+
 
 def convert_ac_labels_to_string(ac_labels):
-    ac_string = "4"
+    ac_string = ""
     for label in ac_labels:
         if label.level == "R1":
             ac_string += lbl_to_str_dict[label.text]
@@ -248,8 +255,49 @@ def define_word_boundaries(ac_parts_with_space, ac_labels, words):
     return ac_labels
 
 
-def define_syntagmas(ac_labels, txt_clusters):
-    pass
+def define_syntagmas(ac_labels, txt_clusters, text):
+    ac_part_labels = []
+    for label in ac_labels:
+        if label.level == "R1":
+            ac_part_labels.append(label)
+
+    ac_string = convert_ac_labels_to_string(ac_part_labels)
+    text_string = convert_txt_clusters_to_string(txt_clusters)
+    str_difference = list(ndiff(text_string, ac_string))
+
+    # индексы текстовых кластеров, после которых идет пауза
+    spaced_parts_indexes = []
+    without_sign_count = 0
+    for dif in str_difference:
+        if not dif.startswith(("+", "-")):
+            without_sign_count += 1
+        if dif == "+ 4":
+            spaced_parts_indexes.append(without_sign_count)
+
+    pause_indexes = [txt_clusters[x][0] for x in spaced_parts_indexes]
+
+    word_boundaries_indexes = []
+    for i, ch in enumerate(list(text)):
+        if ch == " ":
+            word_boundaries_indexes.append(i)
+
+    pause_indexes_final = [0]
+    for ind in pause_indexes:
+        pause_indexes_final.append(nearest(word_boundaries_indexes, ind))
+    pause_indexes_final.append(len(text))
+
+    text_fragments = []
+    for ind1, ind2 in zip(pause_indexes_final, pause_indexes_final[1:]):
+        text_frag = text[ind1: ind2]
+        text_fragments.append(text_frag)
+
+    lbl_count = 0
+    for label in ac_labels:
+        if label.level == "Y1" and label.text in ("begin", "new_synt"):
+            label.text = text_fragments[lbl_count]
+            lbl_count += 1
+
+    return ac_labels
 
 
 def main(wav_fn, text_fn) -> None:
@@ -278,9 +326,9 @@ def main(wav_fn, text_fn) -> None:
     txt_clusters, word_boundaries_indexes = process_text(text)
 
     # 3. Сопоставление акустических меток с текстом, поиск пауз
-    # ac_labels = define_syntagmas(ac_labels, txt_clusters)
-    # acoustic_parts = split_acoustic_labels(ac_labels)
-    # text_parts = split_text_clusters(txt_clusters)
+    ac_labels = define_syntagmas(ac_labels, txt_clusters, text)
+    acoustic_parts = split_acoustic_labels(ac_labels)
+    text_parts = split_text_clusters(txt_clusters)
 
     # 4 Более точный ак анализ и транскрипция внутри каждой синтагмы
 
@@ -301,7 +349,7 @@ def main(wav_fn, text_fn) -> None:
     print(f"Границы слов записаны в файл {new_seg_fn}")
 
 
-wav_fn = r"D:\pycharm_projects\word_segmentator\data\source_data\cta0004.wav"
-text_fn = r"D:\pycharm_projects\word_segmentator\data\source_data\cta0004.txt"
+wav_fn = r"D:\pycharm_projects\word_segmentator\data\source_data\cta0006.wav"
+text_fn = r"D:\pycharm_projects\word_segmentator\data\source_data\cta0006.txt"
 
 main(wav_fn, text_fn)

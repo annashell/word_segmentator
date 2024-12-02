@@ -82,14 +82,14 @@ def get_statistics_for_window(signal_part, samplerate, avg_signal_intensity):
         "sp_peaks_num_after_5000": number_of_peaks_after_5000,
         "less_500_dens": less_500_dens / dens_1000_to_1500,
         "dens_500_to_1000": dens_500_to_1000 / dens_1000_to_1500,
-        "dens_1000_to_1500": dens_1000_to_1500 / dens_1500_to_2000,
+        # "dens_1000_to_1500": dens_1000_to_1500 / dens_1500_to_2000,
         "dens_1500_to_2000": dens_500_to_1000 / dens_1500_to_2000,
         "less_2500_dens": less_2500_dens / dens_5000_to_7500,
         "dens_2500_to_5000": dens_2500_to_5000 / dens_5000_to_7500,
-        "dens_5000_to_7500": dens_5000_to_7500 / dens_7500_to_10000,
+        # "dens_5000_to_7500": dens_5000_to_7500 / dens_7500_to_10000,
         "dens_7500_to_10000": dens_2500_to_5000 / dens_7500_to_10000,
         "avg_intensity": round(avg_alloph_window_intensity / avg_signal_intensity, 2),
-        "max_intensity": round(max_alloph_window_intensity / avg_signal_intensity, 2),
+        # "max_intensity": round(max_alloph_window_intensity / avg_signal_intensity, 2),
     }
 
     return stats
@@ -160,14 +160,14 @@ def get_statistics_from_b1(seg_b1: Seg, signal_: Signal, window_size: float):
                 [
                     less_500_dens / dens_1000_to_1500,
                     dens_500_to_1000 / dens_1000_to_1500,
-                    dens_1000_to_1500 / dens_1500_to_2000,
+                    # dens_1000_to_1500 / dens_1500_to_2000,
                     dens_500_to_1000 / dens_1500_to_2000
                 ])
             features_dict[start.text][-1].extend(
                 [
                     less_2500_dens / dens_5000_to_7500,
                     dens_2500_to_5000 / dens_5000_to_7500,
-                    dens_5000_to_7500 / dens_7500_to_10000,
+                    # dens_5000_to_7500 / dens_7500_to_10000,
                     dens_2500_to_5000 / dens_7500_to_10000
                 ])
 
@@ -176,8 +176,8 @@ def get_statistics_from_b1(seg_b1: Seg, signal_: Signal, window_size: float):
             features_dict[start.text][-1].append(round(avg_alloph_window_intensity / avg_signal_intensity, 2))
 
             # 6. max window amplitude
-            max_alloph_window_intensity = max([abs(i) for i in signal_part])
-            features_dict[start.text][-1].append(round(max_alloph_window_intensity / avg_signal_intensity, 2))
+            # max_alloph_window_intensity = max([abs(i) for i in signal_part])
+            # features_dict[start.text][-1].append(round(max_alloph_window_intensity / avg_signal_intensity, 2))
 
     return features_dict
 
@@ -207,14 +207,14 @@ def get_allophone_statistics_for_corpus(fld_name, window_size):
         "sp_peaks_num_after_5000",
         "less_500_dens",
         "dens_500_to_1000",
-        "dens_1000_to_1500",
+        # "dens_1000_to_1500",
         "dens_1500_to_2000",
         "less_2500_dens",
         "dens_2500_to_5000",
-        "dens_5000_to_7500",
+        # "dens_5000_to_7500",
         "dens_7500_to_10000",
         "avg_intensity",
-        "max_intensity"
+        # "max_intensity"
     ]
 
     for key, value in allophone_stat.items():
@@ -228,11 +228,12 @@ def get_allophone_statistics_for_corpus(fld_name, window_size):
         "fricative": {},
         "other": {}
     }
+
     vowels = ('a', 'e', 'i', 'u', 'o', 'y')
     sonorants = ('l', 'm', 'n', 'v', "l'", "m'", "n'", "v'", "r'")
     voiceless_stops = ('p', 't', 'k', "p'", "k'")
-    fricative = ('z', 'z', 'zh', 's', 'f', 'h', "s'", "f'", "h'", 'ch', 'sh', 'sc', "t'", "d'", "c", "CH", 'j', 'r')
-    other = ('b', 'd', "b'")
+    fricative = ('z', "z'", 'zh', 's', 'f', 'h', "s'", "f'", "h'", 'ch', 'sh', 'sc', "t'", "d'", "c", "CH", 'j', 'r', "ch_", "zh'")
+    other = ('b', 'd', "b'", 'g', "g'")
 
     for key, value in allophone_stat.items():
         new_key = "other"
