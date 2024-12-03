@@ -102,13 +102,13 @@ def detect_pauses(signal_: Signal, labels: list = [], config: dict = {}):
     N = int(
         config_["window_size"] * signal_.params.samplerate // signal_.params.sampwidth)  # окно анализа в отсчетах
     max_signal_ampl = max([abs(i) for i in signal_.signal])
-    fictive_pause = [0 for i in range(
-        int(config_["min_pause_duration"] * signal_.params.samplerate * 2))]
-    signal_wp = fictive_pause + list(signal_.signal)
+    # fictive_pause = [0 for i in range(
+    #     int(config_["min_pause_duration"] * signal_.params.samplerate * 2))]
+    signal_wp = list(signal_.signal)
     for i in range(len(signal_wp) // N):
         signal_part = signal_wp[i * N: i * N + N]
         mean_part_ampl = mean([abs(i) for i in signal_part])
-        new_label_position = int(i * N - len(fictive_pause))
+        new_label_position = int(i * N)
         to_prev_label_time_distance = (new_label_position - labels[-1].position) / signal_.params.samplerate
         if mean_part_ampl < config_["threshold"] * max_signal_ampl:
             if labels[-1].text != 'pause':
@@ -125,6 +125,13 @@ def detect_pauses(signal_: Signal, labels: list = [], config: dict = {}):
                 labels.pop(len(labels) - 1)
 
     labels = list(filter(lambda x: x.position >= 0, labels))
+    labels.pop(0)
+    # begin_part = list(signal_.signal)[:labels[1].position]
+    # mean_begin_part_ampl = mean([abs(i) for i in begin_part])
+    # if mean_begin_part_ampl < config_["threshold"] * max_signal_ampl:
+    #     labels[0].text = "pause"
+    # else:
+    #     labels[0].text = "new_synt"
     return labels
 
 
@@ -136,8 +143,8 @@ def unite_label_clusters(labels: list[Label]):
     return new_labels
 
 
-def detect_allophone_classes(signal: Signal, labels: list[Label] = [], config: dict = {}):
-    config_ = config["allophone_classes_detection_parameters"]
+def detect_allophone_types(signal: Signal, labels: list[Label] = [], config: dict = {}):
+    config_ = config["allophone_type_detection_parameters"]
     samplerate = signal.params.samplerate
 
     new_labels = deepcopy(labels)
@@ -202,7 +209,7 @@ def detect_allophone_classes(signal: Signal, labels: list[Label] = [], config: d
                 probable_classes = [key for key in prob_by_rel_interval.keys() if
                                     prob_by_rel_interval[key] != min_rel_interval_probability]
 
-                probable_classes = ["fricative", "voiceless_stops", "other", "vowels or sonorants"]
+                probable_classes = ["fricative", "voiceless_stops", "periodic"]
 
                 if zero_crossing_rate < 10 and "fricative" in probable_classes:
                     ind = probable_classes.index("fricative")
@@ -219,11 +226,11 @@ def detect_allophone_classes(signal: Signal, labels: list[Label] = [], config: d
                     max([value for key, value in avg_probabilities.items() if key in probable_classes]))
                 most_probable = list(avg_probabilities.keys())[most_probable_ind]
 
-                vow_son_prob = avg_probabilities["vowels or sonorants"]
+                vow_son_prob = avg_probabilities["periodic"]
                 st_prob = avg_probabilities["voiceless_stops"]
                 fr_prob = avg_probabilities["fricative"]
-                other_prob = avg_probabilities["other"]
-                text_stat = f"v-s {vow_son_prob} st {st_prob} fr {fr_prob} o {other_prob}"
+                # other_prob = avg_probabilities["other"]
+                text_label = f"per {vow_son_prob} st {st_prob} fr {fr_prob}"
                 text_label = f"{most_probable} {mean_part_ampl / max_syntagma_ampl} {zero_crossing_rate}"
                 text_label = f"{most_probable}"
                 if zero_crossing_rate > 15:
@@ -231,6 +238,9 @@ def detect_allophone_classes(signal: Signal, labels: list[Label] = [], config: d
                     text_label = f"fricative"
                 elif mean_part_ampl / max_syntagma_ampl < config_["threshold"]:  # voiceless stops
                     text_label = f"voiceless_stops"
+                else:
+                    text_label = f"periodic"
+
                 # elif number_of_peaks_before_5000 >= 3 and less_2500_dens > dens_5000_to_7500:
                 #     # low vowel or sonorant
                 #     # text_label = f"vowel or sonorant {x} {y} {less_250_dens} {dens_250_to_500} {dens_500_to_750} {dens_750_to_1000}"

@@ -1,14 +1,14 @@
 {
   "pause_detection_parameters": {
     "window_size": 0.02,
-    "threshold": 0.02,
-    "min_pause_duration": 0.15,
+    "threshold": 0.01,
+    "min_pause_duration": 0.1,
     "min_alloph_duration": 0.05
   },
 
-  "allophone_classes_detection_parameters": {
-    "window_size": 0.04,
-    "threshold": 0.04
+  "allophone_type_detection_parameters": {
+    "window_size": 0.02,
+    "threshold": 0.01
   }
 
 }

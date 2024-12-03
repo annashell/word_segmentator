@@ -223,10 +223,9 @@ def get_allophone_statistics_for_corpus(fld_name, window_size):
             stat_distribution[key][name] = [v[j] for v in value[1:]]
 
     stat_distribution_by_classes = {
-        "vowels or sonorants": {},
+        "periodic": {},
         "voiceless_stops": {},
         "fricative": {},
-        "other": {}
     }
 
     vowels = ('a', 'e', 'i', 'u', 'o', 'y')
@@ -236,11 +235,11 @@ def get_allophone_statistics_for_corpus(fld_name, window_size):
     other = ('b', 'd', "b'", 'g', "g'")
 
     for key, value in allophone_stat.items():
-        new_key = "other"
+        new_key = "periodic"
         if key.startswith(vowels):
-            new_key = "vowels or sonorants"
+            new_key = "periodic"
         elif key in sonorants:
-            new_key = "vowels or sonorants"
+            new_key = "periodic"
         elif key in voiceless_stops:
             new_key = "voiceless_stops"
         elif key in fricative:
@@ -274,8 +273,8 @@ def write_stat_json(fld_name, window_size):
     stat_distrib_histograms_by_classes, stat_distrib_histograms_by_allophones = get_allophone_statistics_for_corpus(
         fld_name, window_size)
 
-    write_object_to_json(stat_distrib_histograms_by_classes, "data/stats/stat_distrib_histograms_by_classes.json")
-    write_object_to_json(stat_distrib_histograms_by_allophones, "data/stats/stat_distrib_histograms_by_allophones.json")
+    write_object_to_json(stat_distrib_histograms_by_classes, "data/stats/male_stat_distrib_histograms_by_classes.json")
+    write_object_to_json(stat_distrib_histograms_by_allophones, "data/stats/male_stat_distrib_histograms_by_allophones.json")
 
 
 def detect_if_is_in_reliable_interval(histogram, window_stat, threshold):
@@ -300,7 +299,7 @@ def detect_if_is_in_reliable_interval(histogram, window_stat, threshold):
 
 
 def define_classes_probabilities_for_window(signal_part, samplerate, avg_signal_intensity):
-    classes_stat_json = "data/stats/stat_distrib_histograms_by_classes.json"
+    classes_stat_json = "data/stats/male_stat_distrib_histograms_by_classes.json"
     stats = get_object_from_json(classes_stat_json)
 
     window_stats = get_statistics_for_window(signal_part, samplerate, avg_signal_intensity)
@@ -337,7 +336,7 @@ def define_classes_probabilities_for_window(signal_part, samplerate, avg_signal_
     return probabilities, avg_probabilities, prob_by_rel_interval
 
 
-fld_name = r"D:\corpora\corpres\cta"
+fld_name = r"D:\corpora\corpres\ata"
 window_size = 0.04
 
 # write_stat_json(fld_name, window_size)

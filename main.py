@@ -1,9 +1,12 @@
 import re
 from difflib import ndiff
 
-from sig_analysis import detect_pauses, detect_allophone_classes
+from sig_analysis import detect_pauses, detect_allophone_types
 from utils.json_utils import get_object_from_json
 from utils.signal_classes import Signal, Seg, Label
+
+from Bio import pairwise2
+from Bio.pairwise2 import format_alignment
 
 
 def process_signal(signal: Signal, config: dict) -> list:
@@ -13,7 +16,7 @@ def process_signal(signal: Signal, config: dict) -> list:
     """
     labels = [Label(0, "Y1", 'begin')]
     labels = detect_pauses(signal, labels, config)
-    labels = detect_allophone_classes(signal, labels, config)
+    labels = detect_allophone_types(signal, labels, config)
 
     return labels
 
@@ -88,7 +91,7 @@ def translate_to_latin(text: str) -> str:
     return latin_text[1:]
 
 
-def process_text(text: str) -> (list, list):
+def process_text(text: str, for_syntagmas) -> (list, list):
     """
     detects cluster boundaries in text
     0 - vowels and sonorants
@@ -121,7 +124,10 @@ def process_text(text: str) -> (list, list):
             clusters.append((i, 2))
             clusters.append((i, 1))
         elif ch in other and (clusters[-1][1] != 3 or (i != 0 and txt_arr[i - 1] == "0")):
-            clusters.append((i, 3))
+            if for_syntagmas:
+                clusters.append((i, 0))
+            else:
+                clusters.append((i, 3))
 
     clusters = clusters[1:]
     return clusters, word_boundaries_indexes
@@ -130,7 +136,7 @@ def process_text(text: str) -> (list, list):
 lbl_to_str_dict = {
     "": "4",
     "fricative": "1",
-    "vowels or sonorants": "0",
+    "periodic": "0",
     "other": "3",
     "voiceless_stops": "2",
     "begin": "",
@@ -265,6 +271,12 @@ def define_syntagmas(ac_labels, txt_clusters, text):
     text_string = convert_txt_clusters_to_string(txt_clusters)
     str_difference = list(ndiff(text_string, ac_string))
 
+    alignments = pairwise2.align.globalxx(text_string.split(),
+                                          ac_string.split(),
+                                          gap_char=['-'])
+
+    format_alignment(*alignments[0])
+
     # индексы текстовых кластеров, после которых идет пауза
     spaced_parts_indexes = []
     without_sign_count = 0
@@ -323,7 +335,7 @@ def main(wav_fn, text_fn) -> None:
     ac_labels = sorted(ac_labels, key=lambda x: x.position)
 
     # 2. Получение псевдотранскрипции и границ слов
-    txt_clusters, word_boundaries_indexes = process_text(text)
+    txt_clusters, word_boundaries_indexes = process_text(text, True)
 
     # 3. Сопоставление акустических меток с текстом, поиск пауз
     ac_labels = define_syntagmas(ac_labels, txt_clusters, text)
@@ -349,7 +361,7 @@ def main(wav_fn, text_fn) -> None:
     print(f"Границы слов записаны в файл {new_seg_fn}")
 
 
-wav_fn = r"D:\pycharm_projects\word_segmentator\data\source_data\cta0006.wav"
+wav_fn = r"D:\pycharm_projects\word_segmentator\data\source_data\ata0006.wav"
 text_fn = r"D:\pycharm_projects\word_segmentator\data\source_data\cta0006.txt"
 
 main(wav_fn, text_fn)
