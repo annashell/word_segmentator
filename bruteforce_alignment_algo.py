@@ -1,7 +1,10 @@
 import itertools
+from statistics import stdev
 
 import nltk
+from scipy.stats import stats
 
+from utils.json_utils import get_object_from_json
 
 possible_symb = ['0', '1', '2']
 
@@ -85,8 +88,8 @@ def partition(arr, n):
     return result
 
 
-def find_syntagma_distribution_variants (ac_string: str, txt_clusters, word_bound_indexes):
-    num_of_syntagmas = ac_string.count("4") # должна быть 4 в начале строки
+def find_syntagma_distribution_variants(ac_string: str, txt_clusters, word_bound_indexes):
+    num_of_syntagmas = ac_string.count("4")  # должна быть 4 в начале строки
     syntagma_distribution_variants = partition(word_bound_indexes, num_of_syntagmas)
 
     txt_cluster_distribution_variants = []
@@ -115,16 +118,32 @@ def find_syntagma_distribution_variants (ac_string: str, txt_clusters, word_boun
     return txt_cluster_distribution_variants, syntagma_distribution_variants
 
 
-def make_most_probable_syntagma_distribution(ac_string: str, txt_clusters, word_bound_indexes):
+def make_most_probable_syntagma_distribution(ac_string: str, txt_clusters, word_bound_indexes, ac_synt_durations):
     ac_syntagmas = [i for i in ac_string.split("4") if i]
 
-    txt_cluster_distribution_variants, syntagma_distribution_variants = find_syntagma_distribution_variants(ac_string, txt_clusters, word_bound_indexes)
+    txt_cluster_distribution_variants, syntagma_distribution_variants = find_syntagma_distribution_variants(ac_string,
+                                                                                                            txt_clusters,
+                                                                                                            word_bound_indexes)
+    durations_stat_json = "data/stats/male_alloph_durations_by_classes.json"
+    durations_stats = get_object_from_json(durations_stat_json)
 
     lev_distances = []
     for variant in txt_cluster_distribution_variants:
         lev = 0
         for i, part in enumerate(variant):
-            lev += make_str_alignment(part, ac_syntagmas[i])
+            ac_dur = ac_synt_durations[i]
+            probable_duration_arr = [0, 0]
+            for x in part:
+                probable_duration_arr[0] += durations_stats[x][0]
+                probable_duration_arr[1] += durations_stats[x][1]
+
+            # Вычисляем вероятность P(ac_dur - epsilon < N < ac_dur + epsilon)
+            mean = probable_duration_arr[0]
+            std_dev = probable_duration_arr[1]
+            probability = stats.norm.cdf(ac_dur + 0.1 * ac_dur, loc=mean, scale=std_dev) - stats.norm.cdf(
+                ac_dur - 0.1 * ac_dur, loc=mean, scale=std_dev)
+
+            lev += make_str_alignment(part, ac_syntagmas[i]) * probability
         lev_distances.append(lev)
 
     best_var = lev_distances.index(min(lev_distances))
@@ -134,23 +153,19 @@ def make_most_probable_syntagma_distribution(ac_string: str, txt_clusters, word_
     return best_syntagma_distribution
 
 
-
-
 str1 = "4010102012101020101010102040101010104010201010"
 str2 = "401020120010210210102100201010210201"
 
 word_boundaries_ind = [0, 9, 11, 16, 22, 33, 35, 43, 52, 60, 62, 67, 73, 77, 80]
-txt_clusters = [(0, 0), (2, 1), (3, 0), (12, 2), (13, 0), (17, 1), (18, 2), (19, 0), (20, 0), (23, 1), (24, 0), (26, 2), (26, 1), (27, 0), (30, 2), (31, 1), (32, 0), (34, 1), (36, 0), (38, 2), (38, 1), (39, 0), (44, 0), (47, 2), (48, 0), (55, 1), (56, 0), (63, 1), (64, 0), (68, 2), (68, 1), (69, 0), (75, 2), (76, 0), (83, 1)]
+txt_clusters = [(0, 0), (2, 1), (3, 0), (12, 2), (13, 0), (17, 1), (18, 2), (19, 0), (20, 0), (23, 1), (24, 0), (26, 2),
+                (26, 1), (27, 0), (30, 2), (31, 1), (32, 0), (34, 1), (36, 0), (38, 2), (38, 1), (39, 0), (44, 0),
+                (47, 2), (48, 0), (55, 1), (56, 0), (63, 1), (64, 0), (68, 2), (68, 1), (69, 0), (75, 2), (76, 0),
+                (83, 1)]
 
 # mods = make_str_alignment(str1, str2)
 # print(mods)
 
 
-make_most_probable_syntagma_distribution(str1, txt_clusters, word_boundaries_ind)
-
+make_most_probable_syntagma_distribution(str1, txt_clusters, word_boundaries_ind, [12, 5, 7])
 
 # make_str_alignment("0120", "010")
-
-
-
-

@@ -114,10 +114,10 @@ class Seg:
                 f.write(f"{pos}, {level2code[label.level]}, {label.text}\n")
         print("Параметры и метки записаны в файл ", self.filename)
 
-        def get_labels_in_pairs(self, num_samples):
-            ends = [end.position for start, end in zip(self.labels, self.labels[1:])]
-            ends.append(num_samples)
-            return [(label.position, ends[i], label.text) for i, label in enumerate(self.labels)]
+    def get_labels_in_pairs(self, num_samples):
+        ends = [end.position for start, end in zip(self.labels, self.labels[1:])]
+        ends.append(num_samples)
+        return [(label.position, ends[i], label.text) for i, label in enumerate(self.labels)]
 
 
 class Signal:

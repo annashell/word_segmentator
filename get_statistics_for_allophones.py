@@ -9,6 +9,13 @@ from scipy.signal import correlate, find_peaks
 from utils.json_utils import write_object_to_json, get_object_from_json
 from utils.signal_classes import Seg, Signal
 
+vowels = ('a', 'e', 'i', 'u', 'o', 'y')
+sonorants = ('l', 'm', 'n', 'v', "l'", "m'", "n'", "v'", "r'")
+voiceless_stops = ('p', 't', 'k', "p'", "k'")
+fricative = (
+'z', "z'", 'zh', 's', 'f', 'h', "s'", "f'", "h'", 'ch', 'sh', 'sc', "t'", "d'", "c", "CH", 'j', 'r', "ch_", "zh'")
+other = ('b', 'd', "b'", 'g', "g'")
+
 
 def get_zero_cross_rate(signal_part):
     zero_crossing_rate = 0
@@ -182,6 +189,10 @@ def get_statistics_from_b1(seg_b1: Seg, signal_: Signal, window_size: float):
     return features_dict
 
 
+def get_key_name(alloph):
+    return
+
+
 def get_allophone_statistics_for_corpus(fld_name, window_size):
     allophone_stat = {}
 
@@ -227,12 +238,6 @@ def get_allophone_statistics_for_corpus(fld_name, window_size):
         "voiceless_stops": {},
         "fricative": {},
     }
-
-    vowels = ('a', 'e', 'i', 'u', 'o', 'y')
-    sonorants = ('l', 'm', 'n', 'v', "l'", "m'", "n'", "v'", "r'")
-    voiceless_stops = ('p', 't', 'k', "p'", "k'")
-    fricative = ('z', "z'", 'zh', 's', 'f', 'h', "s'", "f'", "h'", 'ch', 'sh', 'sc', "t'", "d'", "c", "CH", 'j', 'r', "ch_", "zh'")
-    other = ('b', 'd', "b'", 'g', "g'")
 
     for key, value in allophone_stat.items():
         new_key = "periodic"
@@ -336,7 +341,53 @@ def define_classes_probabilities_for_window(signal_part, samplerate, avg_signal_
     return probabilities, avg_probabilities, prob_by_rel_interval
 
 
+def get_key_for_dur(key):
+    new_key = "0"
+    if key.startswith(vowels):
+        new_key = "0"
+    elif key in sonorants:
+        new_key = "0"
+    elif key in voiceless_stops:
+        new_key = "2"
+    elif key in fricative:
+        new_key = "1"
+    return new_key
+
+
+def get_duration_stats(fld_name, by_classes: bool):
+    durations_dict = {}
+    seg_files = glob.glob(f"{fld_name}/*/*.seg_B1", recursive=True)
+
+    fs = 22050
+
+    for seg_file in seg_files:
+        new_seg = Seg(seg_file)
+        new_seg.read_seg_file()
+        labels = new_seg.labels
+        label_pairs = new_seg.get_labels_in_pairs(labels[-1].position)
+        fs = new_seg.params.samplerate
+
+        # сначала создаем словарь с массивами всех длительностей по аллофонам
+        for i, (start, end, text) in enumerate(label_pairs):
+            alloph = text.lower().strip()
+            if not by_classes:
+                key_name = alloph
+            else:
+                key_name = get_key_for_dur(text)
+
+            if key_name in durations_dict:
+                new_dur = end - start
+                durations_dict[key_name].append(new_dur)
+            else:
+                durations_dict[key_name] = [end - start]
+    # преобразовываем в словарь с нужными значениями
+    durations_params_dict = {key: [np.mean(value) / fs, np.std(value) / fs] for key, value in durations_dict.items()}
+    write_object_to_json(durations_params_dict, "data/stats/male_alloph_durations_by_classes.json")
+
+# write_stat_json(fld_name, window_size)
+
 fld_name = r"D:\corpora\corpres\ata"
 window_size = 0.04
 
-# write_stat_json(fld_name, window_size)
+get_duration_stats(fld_name, True)
+

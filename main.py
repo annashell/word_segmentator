@@ -1,6 +1,7 @@
 import re
 from difflib import ndiff
 
+from bruteforce_alignment_algo import make_most_probable_syntagma_distribution
 from sig_analysis import detect_pauses, detect_allophone_types
 from utils.json_utils import get_object_from_json
 from utils.signal_classes import Signal, Seg, Label
@@ -312,6 +313,12 @@ def define_syntagmas(ac_labels, txt_clusters, text):
     return ac_labels
 
 
+def define_syntagmas_2(ac_labels, txt_clusters, text, word_boundaries_indexes):
+    best_syntagma_distribution = make_most_probable_syntagma_distribution()
+    #TODO
+    return ac_labels
+
+
 def main(wav_fn, text_fn) -> None:
     """
     writes seg-file with word boundaries
@@ -338,7 +345,8 @@ def main(wav_fn, text_fn) -> None:
     txt_clusters, word_boundaries_indexes = process_text(text, True)
 
     # 3. Сопоставление акустических меток с текстом, поиск пауз
-    ac_labels = define_syntagmas(ac_labels, txt_clusters, text)
+    # ac_labels = define_syntagmas(ac_labels, txt_clusters, text)
+    ac_labels = define_syntagmas_2(ac_labels, txt_clusters, text, word_boundaries_indexes)
     acoustic_parts = split_acoustic_labels(ac_labels)
     text_parts = split_text_clusters(txt_clusters)
 
