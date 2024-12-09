@@ -256,7 +256,9 @@ def detect_allophone_types(signal: Signal, labels: list[Label] = [], config: dic
     new_labels_clusters = unite_label_clusters(new_labels_clusters)
 
     for label1, label2, label3 in zip(new_labels_clusters, new_labels_clusters[1:], new_labels_clusters[2:]):
-        if label2.text == "voiceless_stops" and label3.text == "":
+        if (label3.position - label2.position) / samplerate < config_["min_alloph_duration"]:
+            label2.text = label1.text
+        elif label2.text == "voiceless_stops" and label3.text == "":
             label2.text = label1.text
         elif label2.text == "voiceless_stops" and label1.text == "":
             label2.text = label3.text

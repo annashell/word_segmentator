@@ -24,43 +24,43 @@ def process_signal(signal: Signal, config: dict) -> list:
 
 char_dict = {
     'а': ['a'],
-    'б': ['b', 'p'],
-    'в': ['v', 'f'],
-    'г': ['g', 'k'],
+    'б': ['b', 'p', "b'"],
+    'в': ['v', 'f', "v'"],
+    'г': ['g', 'k', "g'"],
     'д': ['d', 't', "d'"],
-    'е': ['e'],
-    'ё': ['o'],
-    'ж': ['zh'],
-    'з': ['z', 's'],
+    'е': ['e', 'j e'],
+    'ё': ['o', 'j o'],
+    'ж': ['zh', '', "zh'"],
+    'з': ['z', 's', "z'"],
     'и': ['i'],
-    'й': ['j'],
-    'к': ['k'],
-    'л': ['l'],
-    'м': ['m'],
-    'н': ['n'],
+    'й': ['j', '', 'j'],
+    'к': ['k', '', "k'"],
+    'л': ['l', '', "l'"],
+    'м': ['m', '', "m'"],
+    'н': ['n', '', "n'"],
     'о': ['o'],
-    'п': ['p'],
-    'р': ['r'],
-    'с': ['s'],
+    'п': ['p', '', "p'"],
+    'р': ['r', '', "r'"],
+    'с': ['s', '', "s'"],
     'т': ['t', 't', "t'"],
     'у': ['u'],
-    'ф': ['f'],
-    'х': ['h'],
-    'ц': ['c'],
-    'ч': ['ch'],
-    'ш': ['sh'],
-    'щ': ['sc'],
+    'ф': ['f', '', "f'"],
+    'х': ['h', '', "h'"],
+    'ц': ['c', '', 'c'],
+    'ч': ['ch', '', 'ch'],
+    'ш': ['sh', '', 'sh'],
+    'щ': ['sc', '', 'sc'],
     'ъ': [''],
     'ы': ['y'],
     'ь': [''],
     'э': ['e'],
-    'ю': ['u'],
-    'я': ['a'],
+    'ю': ['u', 'j u'],
+    'я': ['a', 'j a'],
 }
 
 stop_signs = ('.', ',', ':', ';', '!', '?')
-voised_cons = ('б', 'в', 'г', 'д', 'ж', 'з', 'й', 'л', 'м', 'н', 'р')
-unvoised_cons = ('к', 'п', 'с', 'т', 'ф', 'х', 'ц', 'ч', 'ш', 'щ')
+voiced_cons = ('б', 'в', 'г', 'д', 'ж', 'з', 'й', 'л', 'м', 'н', 'р')
+unvoiced_cons = ('к', 'п', 'с', 'т', 'ф', 'х', 'ц', 'ч', 'ш', 'щ')
 vowels = ('а', 'э', 'о', 'у', 'ы', 'и', 'е', 'ё', 'ю', 'я')
 softening_vowels = ('и', 'е', 'ё', 'ю', 'я')
 
@@ -72,14 +72,18 @@ def translate_to_latin(text: str) -> str:
 
     for i, ch in enumerate(text_):
         if ch in vowels:
-            latin_text += char_dict[ch][0] + " "
-        elif ch in ('т', 'д') and i < len(text_) - 1 and text_[i + 1] in softening_vowels:
+            if ch in tuple("еёюя") and (i == 0 or text_[i - 1] in vowels or text_[i - 1] == '0' or text_[i - 1] == 'ь'):
+                latin_text += char_dict[ch][1] + " "
+            else:
+                latin_text += char_dict[ch][0] + " "
+
+        elif (ch in voiced_cons or ch in unvoiced_cons) and i < len(text_) - 1 and (text_[i + 1] in softening_vowels or text_[i + 1] == 'ь'):
             latin_text += char_dict[ch][2] + " "
             continue
         elif ch in ('б', 'в', 'г', 'д', 'з'):
             if i < len(text_) - 1:
-                if text_[i + 1] in stop_signs or text_[i + 1] in unvoised_cons or (
-                        text_[i + 1] == '0' and text_[i + 2] in unvoised_cons):
+                if text_[i + 1] in stop_signs or text_[i + 1] in unvoiced_cons or (
+                        text_[i + 1] == '0' and text_[i + 2] in unvoiced_cons):
                     latin_text += char_dict[ch][1] + " "
                 else:
                     latin_text += char_dict[ch][0] + " "
@@ -392,7 +396,7 @@ def main(wav_fn, text_fn) -> None:
     print(f"Границы слов записаны в файл {new_seg_fn}")
 
 
-wav_fn = r"D:\pycharm_projects\word_segmentator\data\source_data\ata0008.wav"
-text_fn = r"D:\pycharm_projects\word_segmentator\data\source_data\cta0008.txt"
+wav_fn = r"D:\pycharm_projects\word_segmentator\data\source_data\ata0006.wav"
+text_fn = r"D:\pycharm_projects\word_segmentator\data\source_data\cta0006.txt"
 
 main(wav_fn, text_fn)
