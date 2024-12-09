@@ -2,7 +2,8 @@ import itertools
 from statistics import stdev
 
 import nltk
-from scipy.stats import stats
+import numpy as np
+from scipy import stats
 
 from utils.json_utils import get_object_from_json
 
@@ -88,14 +89,20 @@ def partition(arr, n):
     return result
 
 
-def find_syntagma_distribution_variants(ac_string: str, txt_clusters, word_bound_indexes):
+def find_syntagma_distribution_variants(ac_string: str, txt_clusters, word_bound_indexes, txt_arr):
     num_of_syntagmas = ac_string.count("4")  # должна быть 4 в начале строки
     syntagma_distribution_variants = partition(word_bound_indexes, num_of_syntagmas)
+
+    text_syntagmas = []
 
     txt_cluster_distribution_variants = []
     for variant in syntagma_distribution_variants:
         text_variant = []
+        transcrip_variant = []
         for part in variant:
+            text_str = txt_arr[part[0]: part[-1]]
+            transcrip_variant.append(text_str)
+
             part_distribution = []
             start = part[0] if part[0] == 0 else part[0] + 1
             end = part[-1]
@@ -114,58 +121,64 @@ def find_syntagma_distribution_variants(ac_string: str, txt_clusters, word_bound
                     break
             text_variant.append("".join(str(num) for num in part_distribution))
         txt_cluster_distribution_variants.append(text_variant)
+        text_syntagmas.append(transcrip_variant)
 
-    return txt_cluster_distribution_variants, syntagma_distribution_variants
+    return txt_cluster_distribution_variants, syntagma_distribution_variants, text_syntagmas
 
 
-def make_most_probable_syntagma_distribution(ac_string: str, txt_clusters, word_bound_indexes, ac_synt_durations):
+def make_most_probable_syntagma_distribution(ac_string: str, txt_clusters, word_bound_indexes, ac_synt_durations, txt_arr):
     ac_syntagmas = [i for i in ac_string.split("4") if i]
 
-    txt_cluster_distribution_variants, syntagma_distribution_variants = find_syntagma_distribution_variants(ac_string,
+    txt_cluster_distribution_variants, syntagma_distribution_variants, text_syntagmas = find_syntagma_distribution_variants(ac_string,
                                                                                                             txt_clusters,
-                                                                                                            word_bound_indexes)
-    durations_stat_json = "data/stats/male_alloph_durations_by_classes.json"
+                                                                                                            word_bound_indexes, txt_arr)
+    print("Найдены варианты разбиения на синтагмы")
+
+    durations_stat_json = "data/stats/male_alloph_durations.json"
     durations_stats = get_object_from_json(durations_stat_json)
 
     lev_distances = []
-    for variant in txt_cluster_distribution_variants:
+    probabilities = []
+    for j, variant in enumerate(txt_cluster_distribution_variants):
         lev = 0
+        sum_probability = 0
         for i, part in enumerate(variant):
             ac_dur = ac_synt_durations[i]
             probable_duration_arr = [0, 0]
-            for x in part:
-                probable_duration_arr[0] += durations_stats[x][0]
-                probable_duration_arr[1] += durations_stats[x][1]
+
+            for x in text_syntagmas[j][i]:
+                if x not in tuple("0.,!?;:-"):
+                    if x.startswith(tuple("aeoiuy")):
+                        x = x[0] + '0'
+                    probable_duration_arr[0] += durations_stats[x][0]
+                    probable_duration_arr[1] += durations_stats[x][1]
+
+            if txt_cluster_distribution_variants.index(variant) == 60:
+                print("")
 
             # Вычисляем вероятность P(ac_dur - epsilon < N < ac_dur + epsilon)
             mean = probable_duration_arr[0]
             std_dev = probable_duration_arr[1]
-            probability = stats.norm.cdf(ac_dur + 0.1 * ac_dur, loc=mean, scale=std_dev) - stats.norm.cdf(
-                ac_dur - 0.1 * ac_dur, loc=mean, scale=std_dev)
+            probability = stats.norm.cdf(ac_dur + 0.2 * ac_dur, loc=mean, scale=std_dev) - stats.norm.cdf(
+                ac_dur - 0.2 * ac_dur, loc=mean, scale=std_dev)
 
-            lev += make_str_alignment(part, ac_syntagmas[i]) * probability
+            sum_probability += probability
+            if probability < 0.1:
+                continue
+
+            lev += make_str_alignment(part, ac_syntagmas[i])
+        probabilities.append(round(sum_probability / len(variant), 2))
+        if lev == 0: lev = 0.01
         lev_distances.append(lev)
+        num_var = round((j + 1) / len(txt_cluster_distribution_variants), 0)
+        if num_var != 0 and num_var% 10 == 0:
+            print(f"Найдена вероятность {j + 1}/{len(txt_cluster_distribution_variants)} варианта")
 
-    best_var = lev_distances.index(min(lev_distances))
+    lev_distances_norm = [round(max(lev_distances), 2) / x for x in lev_distances]
+    probable_levenstein = [round(x * probabilities[l], 4) for l, x in enumerate(lev_distances_norm)]
+    best_var = list(probable_levenstein).index(max(probable_levenstein))
 
     best_syntagma_distribution = syntagma_distribution_variants[best_var]
 
     return best_syntagma_distribution
 
-
-str1 = "4010102012101020101010102040101010104010201010"
-str2 = "401020120010210210102100201010210201"
-
-word_boundaries_ind = [0, 9, 11, 16, 22, 33, 35, 43, 52, 60, 62, 67, 73, 77, 80]
-txt_clusters = [(0, 0), (2, 1), (3, 0), (12, 2), (13, 0), (17, 1), (18, 2), (19, 0), (20, 0), (23, 1), (24, 0), (26, 2),
-                (26, 1), (27, 0), (30, 2), (31, 1), (32, 0), (34, 1), (36, 0), (38, 2), (38, 1), (39, 0), (44, 0),
-                (47, 2), (48, 0), (55, 1), (56, 0), (63, 1), (64, 0), (68, 2), (68, 1), (69, 0), (75, 2), (76, 0),
-                (83, 1)]
-
-# mods = make_str_alignment(str1, str2)
-# print(mods)
-
-
-make_most_probable_syntagma_distribution(str1, txt_clusters, word_boundaries_ind, [12, 5, 7])
-
-# make_str_alignment("0120", "010")

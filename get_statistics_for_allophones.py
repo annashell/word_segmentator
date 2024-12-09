@@ -389,5 +389,5 @@ def get_duration_stats(fld_name, by_classes: bool):
 fld_name = r"D:\corpora\corpres\ata"
 window_size = 0.04
 
-get_duration_stats(fld_name, True)
+# get_duration_stats(fld_name, True)
 

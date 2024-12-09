@@ -131,7 +131,7 @@ def process_text(text: str, for_syntagmas) -> (list, list):
                 clusters.append((i, 3))
 
     clusters = clusters[1:]
-    return clusters, word_boundaries_indexes
+    return clusters, word_boundaries_indexes, txt_arr
 
 
 lbl_to_str_dict = {
@@ -313,9 +313,29 @@ def define_syntagmas(ac_labels, txt_clusters, text):
     return ac_labels
 
 
-def define_syntagmas_2(ac_labels, txt_clusters, text, word_boundaries_indexes):
-    best_syntagma_distribution = make_most_probable_syntagma_distribution()
-    #TODO
+def define_syntagmas_2(ac_labels, txt_clusters, text, word_boundaries_indexes, sampling_freq, txt_arr):
+    ac_part_labels = []
+    synt_labels = []
+    ac_synt_durations = []
+
+    for label in ac_labels:
+        if label.level == "R1":
+            ac_part_labels.append(label)
+        elif label.level == "Y1":
+            synt_labels.append(label)
+
+    ac_string = convert_ac_labels_to_string(ac_part_labels)
+
+    for label1, label2 in zip(synt_labels, synt_labels[1:]):
+        if label1.text == "new_synt":
+            ac_synt_durations.append((label2.position - label1.position)/sampling_freq)
+
+    best_syntagma_distribution = make_most_probable_syntagma_distribution(ac_string, txt_clusters, word_boundaries_indexes, ac_synt_durations, txt_arr)
+    count = 0
+    for label in ac_labels:
+        if label.level == "Y1" and label.text == "new_synt":
+            label.text = text[best_syntagma_distribution[count][0] : best_syntagma_distribution[count][-1]]
+            count += 1
     return ac_labels
 
 
@@ -340,13 +360,16 @@ def main(wav_fn, text_fn) -> None:
     # 1. Получение акустических меток
     ac_labels = process_signal(signal, config)
     ac_labels = sorted(ac_labels, key=lambda x: x.position)
+    print("Получены акустические метки")
 
     # 2. Получение псевдотранскрипции и границ слов
-    txt_clusters, word_boundaries_indexes = process_text(text, True)
+    txt_clusters, word_boundaries_indexes, txt_arr = process_text(text, True)
+    print("Получена псевдотранскрипция")
 
     # 3. Сопоставление акустических меток с текстом, поиск пауз
     # ac_labels = define_syntagmas(ac_labels, txt_clusters, text)
-    ac_labels = define_syntagmas_2(ac_labels, txt_clusters, text, word_boundaries_indexes)
+    ac_labels = define_syntagmas_2(ac_labels, txt_clusters, text, word_boundaries_indexes, signal.params.samplerate, txt_arr)
+    print(f"Получены метки с разбиением на синтагмы")
     acoustic_parts = split_acoustic_labels(ac_labels)
     text_parts = split_text_clusters(txt_clusters)
 
@@ -369,7 +392,7 @@ def main(wav_fn, text_fn) -> None:
     print(f"Границы слов записаны в файл {new_seg_fn}")
 
 
-wav_fn = r"D:\pycharm_projects\word_segmentator\data\source_data\ata0006.wav"
-text_fn = r"D:\pycharm_projects\word_segmentator\data\source_data\cta0006.txt"
+wav_fn = r"D:\pycharm_projects\word_segmentator\data\source_data\ata0008.wav"
+text_fn = r"D:\pycharm_projects\word_segmentator\data\source_data\cta0008.txt"
 
 main(wav_fn, text_fn)
