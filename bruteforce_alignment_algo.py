@@ -126,12 +126,14 @@ def find_syntagma_distribution_variants(ac_string: str, txt_clusters, word_bound
     return txt_cluster_distribution_variants, syntagma_distribution_variants, text_syntagmas
 
 
-def make_most_probable_syntagma_distribution(ac_string: str, txt_clusters, word_bound_indexes, ac_synt_durations, txt_arr):
+def make_most_probable_syntagma_distribution(ac_string: str, txt_clusters, word_bound_indexes, ac_synt_durations,
+                                             txt_arr):
     ac_syntagmas = [i for i in ac_string.split("4") if i]
 
-    txt_cluster_distribution_variants, syntagma_distribution_variants, text_syntagmas = find_syntagma_distribution_variants(ac_string,
-                                                                                                            txt_clusters,
-                                                                                                            word_bound_indexes, txt_arr)
+    txt_cluster_distribution_variants, syntagma_distribution_variants, text_syntagmas = find_syntagma_distribution_variants(
+        ac_string,
+        txt_clusters,
+        word_bound_indexes, txt_arr)
     print("Найдены варианты разбиения на синтагмы")
 
     durations_stat_json = "data/stats/male_alloph_durations.json"
@@ -171,7 +173,7 @@ def make_most_probable_syntagma_distribution(ac_string: str, txt_clusters, word_
         if lev == 0: lev = 0.01
         lev_distances.append(lev)
         num_var = round((j + 1) / len(txt_cluster_distribution_variants), 0)
-        if num_var != 0 and num_var% 10 == 0:
+        if num_var != 0 and num_var % 10 == 0:
             print(f"Найдена вероятность {j + 1}/{len(txt_cluster_distribution_variants)} варианта")
 
     lev_distances_norm = [round(max(lev_distances), 2) / x for x in lev_distances]
@@ -182,3 +184,40 @@ def make_most_probable_syntagma_distribution(ac_string: str, txt_clusters, word_
 
     return best_syntagma_distribution
 
+
+def make_most_probable_syntagma_distribution_2(ac_string: str, txt_clusters, word_bound_indexes, ac_synt_durations,
+                                               txt_arr):
+    ac_syntagmas = [i for i in ac_string.split("4") if i]
+
+    durations_stat_json = "data/stats/male_alloph_durations.json"
+    durations_stats = get_object_from_json(durations_stat_json)
+
+    synt_bord_indexes = []
+    starting_point = 0
+
+    txt_cluster_distribution_variants, syntagma_distribution_variants, text_syntagmas = find_syntagma_distribution_variants(
+        ac_string,
+        txt_clusters,
+        word_bound_indexes, txt_arr)
+    print("Найдены варианты разбиения на синтагмы")
+
+    for i, synt in enumerate(ac_syntagmas):
+        probable_synt_indexes = []
+        synt_duration = ac_synt_durations[i]
+        for index in word_bound_indexes:
+            txt_part = txt_arr[starting_point : index]
+            txt_part_updated = [ch if not ch.startswith(tuple("aeoiuy")) else ch + "0" for ch in txt_part]
+            mean_len_part = sum(durations_stats[ch][0] for ch in txt_part_updated if ch in durations_stats.keys())
+            std_len_part = sum(durations_stats[ch][1] for ch in txt_part_updated if ch in durations_stats.keys())
+            if mean_len_part - std_len_part < synt_duration:
+                continue
+            if mean_len_part + std_len_part > synt_duration:
+                break
+            probable_synt_indexes.append(index)
+        for index in probable_synt_indexes:
+            txt_part = txt_arr[starting_point : index]
+
+
+    best_syntagma_distribution = []
+
+    return best_syntagma_distribution

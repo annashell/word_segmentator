@@ -1,7 +1,8 @@
 import re
 from difflib import ndiff
 
-from bruteforce_alignment_algo import make_most_probable_syntagma_distribution
+from bruteforce_alignment_algo import make_most_probable_syntagma_distribution, \
+    make_most_probable_syntagma_distribution_2
 from sig_analysis import detect_pauses, detect_allophone_types
 from utils.json_utils import get_object_from_json
 from utils.signal_classes import Signal, Seg, Label
@@ -334,7 +335,7 @@ def define_syntagmas_2(ac_labels, txt_clusters, text, word_boundaries_indexes, s
         if label1.text == "new_synt":
             ac_synt_durations.append((label2.position - label1.position)/sampling_freq)
 
-    best_syntagma_distribution = make_most_probable_syntagma_distribution(ac_string, txt_clusters, word_boundaries_indexes, ac_synt_durations, txt_arr)
+    best_syntagma_distribution = make_most_probable_syntagma_distribution_2(ac_string, txt_clusters, word_boundaries_indexes, ac_synt_durations, txt_arr)
     count = 0
     for label in ac_labels:
         if label.level == "Y1" and label.text == "new_synt":
