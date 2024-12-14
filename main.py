@@ -1,3 +1,5 @@
+import glob
+import os
 import re
 from difflib import ndiff
 
@@ -395,7 +397,13 @@ def main(wav_fn, text_fn) -> None:
 wav_fn = r"D:\projects\word_segmentator\data\source_data\av18s.wav"
 text_fn = r"D:\projects\word_segmentator\data\source_data\av18s.txt"
 
-main(wav_fn, text_fn)
+# main(wav_fn, text_fn)
 
-
-#TODO транскрибировать виспером интас, отсмотреть, прогнать через сегментатор, найти ошибки
+fld_name = r"D:\test_andre"
+wav_files = glob.glob(f"{fld_name}/*.wav", recursive=True)
+for file in wav_files:
+    try:
+        text_fn = os.path.splitext(file)[0] + ".txt"
+        main(file, text_fn)
+    except Exception:
+        print(f"{file} got error")

@@ -18,7 +18,7 @@ def transcribe_from_folder(fld_name):
     for file in wav_files:
         result = model.transcribe(file, language='ru')
         new_filename = os.path.splitext(file)[0] + ".txt"
-        with open(new_filename, "w") as f:
+        with open(new_filename, "w", encoding='utf-8') as f:
             f.write(result['text'].strip())
 
 
