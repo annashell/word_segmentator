@@ -382,12 +382,12 @@ def get_duration_stats(fld_name, by_classes: bool):
                 durations_dict[key_name] = [end - start]
     # преобразовываем в словарь с нужными значениями
     durations_params_dict = {key: [np.mean(value) / fs, np.std(value) / fs] for key, value in durations_dict.items()}
-    write_object_to_json(durations_params_dict, "data/stats/male_alloph_durations_by_classes.json")
+    write_object_to_json(durations_params_dict, "data/stats/male_alloph_durations.json")
 
-# write_stat_json(fld_name, window_size)
 
-fld_name = r"D:\corpora\corpres\ata"
+fld_name = r"D:\corpres\ata"
 window_size = 0.04
 
-# get_duration_stats(fld_name, True)
+# get_duration_stats(fld_name, False)
+# write_stat_json(fld_name, window_size)
 

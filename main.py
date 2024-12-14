@@ -7,9 +7,6 @@ from sig_analysis import detect_pauses, detect_allophone_types
 from utils.json_utils import get_object_from_json
 from utils.signal_classes import Signal, Seg, Label
 
-from Bio import pairwise2
-from Bio.pairwise2 import format_alignment
-
 
 def process_signal(signal: Signal, config: dict) -> list:
     """
@@ -339,7 +336,7 @@ def define_syntagmas_2(ac_labels, txt_clusters, text, word_boundaries_indexes, s
     count = 0
     for label in ac_labels:
         if label.level == "Y1" and label.text == "new_synt":
-            label.text = text[best_syntagma_distribution[count][0] : best_syntagma_distribution[count][-1]]
+            label.text = text[best_syntagma_distribution[count][0]: best_syntagma_distribution[count][-1]]
             count += 1
     return ac_labels
 
@@ -375,8 +372,6 @@ def main(wav_fn, text_fn) -> None:
     # ac_labels = define_syntagmas(ac_labels, txt_clusters, text)
     ac_labels = define_syntagmas_2(ac_labels, txt_clusters, text, word_boundaries_indexes, signal.params.samplerate, txt_arr)
     print(f"Получены метки с разбиением на синтагмы")
-    acoustic_parts = split_acoustic_labels(ac_labels)
-    text_parts = split_text_clusters(txt_clusters)
 
     # 4 Более точный ак анализ и транскрипция внутри каждой синтагмы
 
@@ -397,7 +392,10 @@ def main(wav_fn, text_fn) -> None:
     print(f"Границы слов записаны в файл {new_seg_fn}")
 
 
-wav_fn = r"D:\pycharm_projects\word_segmentator\data\source_data\ata0006.wav"
-text_fn = r"D:\pycharm_projects\word_segmentator\data\source_data\cta0006.txt"
+wav_fn = r"D:\projects\word_segmentator\data\source_data\av18s.wav"
+text_fn = r"D:\projects\word_segmentator\data\source_data\av18s.txt"
 
 main(wav_fn, text_fn)
+
+
+#TODO транскрибировать виспером интас, отсмотреть, прогнать через сегментатор, найти ошибки
