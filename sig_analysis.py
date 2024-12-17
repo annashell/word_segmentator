@@ -169,6 +169,7 @@ def detect_allophone_types(signal: Signal, labels: list[Label] = [], config: dic
 
                 zero_crossing_rate = (get_zero_cross_rate(signal_part) / len(signal_part)) * 100
 
+                #TODO ЗАКОММЕНТИТЬ ЛИШНЕЕ
                 # tmp
                 sp_density = list(sig_part_spectral_density_distribution.values())
 
@@ -209,12 +210,13 @@ def detect_allophone_types(signal: Signal, labels: list[Label] = [], config: dic
                 probable_classes = [key for key in prob_by_rel_interval.keys() if
                                     prob_by_rel_interval[key] != min_rel_interval_probability]
 
-                probable_classes = ["fricative", "voiceless_stops", "periodic"]
+                probable_classes = ["noisy", "voiceless_stops", "periodic"]
 
-                if zero_crossing_rate < 10 and "fricative" in probable_classes:
-                    ind = probable_classes.index("fricative")
+                if zero_crossing_rate < 10 and "noisy" in probable_classes:
+                    ind = probable_classes.index("noisy")
                     probable_classes.pop(ind)
 
+                #TODO log
                 if mean_part_ampl / max_syntagma_ampl > config_["threshold"] and "voiceless_stops" in probable_classes:
                     ind = probable_classes.index("voiceless_stops")
                     probable_classes.pop(ind)
@@ -228,14 +230,15 @@ def detect_allophone_types(signal: Signal, labels: list[Label] = [], config: dic
 
                 vow_son_prob = avg_probabilities["periodic"]
                 st_prob = avg_probabilities["voiceless_stops"]
-                fr_prob = avg_probabilities["fricative"]
+                fr_prob = avg_probabilities["noisy"]
                 # other_prob = avg_probabilities["other"]
                 text_label = f"per {vow_son_prob} st {st_prob} fr {fr_prob}"
                 text_label = f"{most_probable} {mean_part_ampl / max_syntagma_ampl} {zero_crossing_rate}"
                 text_label = f"{most_probable}"
                 if zero_crossing_rate > 15:
                     # text_label = f"fricative {less_2500_dens} {dens_2500_to_5000} {dens_5000_to_7500} {dens_7500_to_10000}"
-                    text_label = f"fricative"
+                    text_label = f"noisy"
+                # TODO log
                 elif mean_part_ampl / max_syntagma_ampl < config_["threshold"]:  # voiceless stops
                     text_label = f"voiceless_stops"
                 else:

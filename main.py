@@ -81,6 +81,7 @@ def translate_to_latin(text: str) -> str:
         elif (ch in voiced_cons or ch in unvoiced_cons) and i < len(text_) - 1 and (text_[i + 1] in softening_vowels or text_[i + 1] == 'ь'):
             latin_text += char_dict[ch][2] + " "
             continue
+        #TODO Озвончение глухих согласных перед звонкими, в том числе на границе слов.
         elif ch in ('б', 'в', 'г', 'д', 'з'):
             if i < len(text_) - 1:
                 if text_[i + 1] in stop_signs or text_[i + 1] in unvoiced_cons or (
@@ -110,19 +111,20 @@ def process_text(text: str, for_syntagmas) -> (list, list):
     vowels_and_sonorant = ('a', 'e', 'i', 'u', 'o', 'y', 'l', 'm', 'n', 'v', "l'", "m'", "n'", "r'", "v'", "r", "j")
     stops = ('p', 't', 'k')
     affricates = ("p'", "k'", "t'", "d'", "c")
-    fricative = ('z', "z'", 'zh', 's', 'f', 'h', "s'", "f'", "h'", 'ch', 'sh', 'sc', "CH", "ch_", "zh'")
+    noisy = ('z', "z'", 'zh', 's', 'f', 'h', "s'", "f'", "h'", 'ch', 'sh', 'sc', "CH", "ch_", "zh'")
     other = ('b', 'd', "b'", 'g', "g'")
 
     clusters = [(0, 9)]
     word_boundaries_indexes = [0]
 
     txt_arr = latin_txt.lower().strip().split()
+    # TODO звонкие мягкие смычные = период + шум
     for i, ch in enumerate(txt_arr):
         if ch == '0':
             word_boundaries_indexes.append(i)  # -1 из-за границы слова в начале
         elif ch in vowels_and_sonorant and clusters[-1][1] != 0:
             clusters.append((i, 0))
-        elif ch in fricative and (clusters[-1][1] != 1 or (i != 0 and txt_arr[i - 1] == "0")):
+        elif ch in noisy and (clusters[-1][1] != 1 or (i != 0 and txt_arr[i - 1] == "0")):
             clusters.append((i, 1))
         elif ch in stops and (clusters[-1][1] != 2 or (i != 0 and txt_arr[i - 1] == "0")):
             clusters.append((i, 2))
