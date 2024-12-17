@@ -185,6 +185,16 @@ def make_most_probable_syntagma_distribution(ac_string: str, txt_clusters, word_
     return best_syntagma_distribution
 
 
+def get_cluster_index_for_border(text_clusters, index):
+    cluster_ind = 0
+    index_cl = 0
+    for cl1, cl2 in zip(text_clusters, text_clusters[1:]):
+        if cl1[0] <= index < cl2[0]:
+            cluster_ind = index_cl
+        index_cl += 1
+    return cluster_ind
+
+
 def make_most_probable_syntagma_distribution_2(ac_string: str, txt_clusters, word_bound_indexes, ac_synt_durations,
                                                txt_arr):
     ac_syntagmas = [i for i in ac_string.split("4") if i]
@@ -192,32 +202,47 @@ def make_most_probable_syntagma_distribution_2(ac_string: str, txt_clusters, wor
     durations_stat_json = "data/stats/male_alloph_durations.json"
     durations_stats = get_object_from_json(durations_stat_json)
 
-    synt_bord_indexes = []
+    synt_bord_indexes = [0]
     starting_point = 0
-
-    txt_cluster_distribution_variants, syntagma_distribution_variants, text_syntagmas = find_syntagma_distribution_variants(
-        ac_string,
-        txt_clusters,
-        word_bound_indexes, txt_arr)
-    print("Найдены варианты разбиения на синтагмы")
 
     for i, synt in enumerate(ac_syntagmas):
         probable_synt_indexes = []
+        probabilities = []
         synt_duration = ac_synt_durations[i]
         for index in word_bound_indexes:
-            txt_part = txt_arr[starting_point : index]
+            txt_part = txt_arr[starting_point: index]
             txt_part_updated = [ch if not ch.startswith(tuple("aeoiuy")) else ch + "0" for ch in txt_part]
             mean_len_part = sum(durations_stats[ch][0] for ch in txt_part_updated if ch in durations_stats.keys())
             std_len_part = sum(durations_stats[ch][1] for ch in txt_part_updated if ch in durations_stats.keys())
-            if mean_len_part - std_len_part < synt_duration:
+            if mean_len_part + std_len_part < synt_duration:
                 continue
-            if mean_len_part + std_len_part > synt_duration:
+            if mean_len_part - std_len_part > synt_duration:
                 break
             probable_synt_indexes.append(index)
-        for index in probable_synt_indexes:
-            txt_part = txt_arr[starting_point : index]
+            probability = stats.norm.cdf(synt_duration + 0.2 * synt_duration, loc=mean_len_part, scale=std_len_part) - stats.norm.cdf(
+                synt_duration - 0.2 * synt_duration, loc=mean_len_part, scale=std_len_part)
+            probabilities.append(probability)
 
+        lev_dist_for_probable_distributions = []
+        probabilities_for_selected = []
+        for num, index in enumerate(probable_synt_indexes):
+            part = txt_clusters[get_cluster_index_for_border(txt_clusters, starting_point): get_cluster_index_for_border(txt_clusters, index) + 1]
 
-    best_syntagma_distribution = []
+            part_distribution = delete_same_symbols("".join([str(x[1]) for x in part]))
+            lev = make_str_alignment(part_distribution, ac_syntagmas[i])
+            lev_dist_for_probable_distributions.append(lev)
+            probabilities_for_selected.append(probabilities[num])
 
-    return best_syntagma_distribution
+        min_lev = min(lev_dist_for_probable_distributions)
+        best_vars_by_lev = [ind for ind, variant in enumerate(lev_dist_for_probable_distributions) if variant == min_lev]
+        best_var = probable_synt_indexes[best_vars_by_lev[-1]]
+        synt_bord_indexes.append(best_var)
+        starting_point = best_var + 1
+
+    best_synt_distribution = []
+    for ind1, ind2 in zip(synt_bord_indexes, synt_bord_indexes[1:]):
+        best_synt_distribution.append([ind1, ind2])
+
+    best_synt_distribution[-1][1] = len(txt_arr) - 1
+
+    return best_synt_distribution
