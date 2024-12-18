@@ -12,8 +12,8 @@ from utils.signal_classes import Seg, Signal
 vowels = ('a', 'e', 'i', 'u', 'o', 'y')
 sonorants = ('l', 'm', 'n', 'v', "l'", "m'", "n'", "v'", "r'")
 voiceless_stops = ('p', 't', 'k', "p'", "k'")
-fricative = (
-'z', "z'", 'zh', 's', 'f', 'h', "s'", "f'", "h'", 'ch', 'sh', 'sc', "t'", "d'", "c", "CH", 'j', 'r', "ch_", "zh'")
+noisy = (
+    'z', "z'", 'zh', 's', 'f', 'h', "s'", "f'", "h'", 'ch', 'sh', 'sc', "t'", "d'", "c", "CH", 'j', 'r', "ch_", "zh'")
 other = ('b', 'd', "b'", 'g', "g'")
 
 
@@ -236,7 +236,7 @@ def get_allophone_statistics_for_corpus(fld_name, window_size):
     stat_distribution_by_classes = {
         "periodic": {},
         "voiceless_stops": {},
-        "fricative": {},
+        "noisy": {},
     }
 
     for key, value in allophone_stat.items():
@@ -247,8 +247,8 @@ def get_allophone_statistics_for_corpus(fld_name, window_size):
             new_key = "periodic"
         elif key in voiceless_stops:
             new_key = "voiceless_stops"
-        elif key in fricative:
-            new_key = "fricative"
+        elif key in noisy:
+            new_key = "noisy"
 
         for j, name in enumerate(field_names):
             if name not in stat_distribution_by_classes[new_key].keys():
@@ -279,7 +279,8 @@ def write_stat_json(fld_name, window_size):
         fld_name, window_size)
 
     write_object_to_json(stat_distrib_histograms_by_classes, "data/stats/male_stat_distrib_histograms_by_classes.json")
-    write_object_to_json(stat_distrib_histograms_by_allophones, "data/stats/male_stat_distrib_histograms_by_allophones.json")
+    write_object_to_json(stat_distrib_histograms_by_allophones,
+                         "data/stats/male_stat_distrib_histograms_by_allophones.json")
 
 
 def detect_if_is_in_reliable_interval(histogram, window_stat, threshold):
@@ -336,7 +337,7 @@ def define_classes_probabilities_for_window(signal_part, samplerate, avg_signal_
             avg_probabilities[key] = 0
         else:
             avg_probabilities[key] = prob_sum / len(probabilities[key].keys())
-        prob_by_rel_interval[key] = reliable_int_count/len(list(stats[key].keys()))
+        prob_by_rel_interval[key] = reliable_int_count / len(list(stats[key].keys()))
 
     return probabilities, avg_probabilities, prob_by_rel_interval
 
@@ -349,7 +350,7 @@ def get_key_for_dur(key):
         new_key = "0"
     elif key in voiceless_stops:
         new_key = "2"
-    elif key in fricative:
+    elif key in noisy:
         new_key = "1"
     return new_key
 
@@ -390,4 +391,3 @@ window_size = 0.04
 
 # get_duration_stats(fld_name, False)
 # write_stat_json(fld_name, window_size)
-

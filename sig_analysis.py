@@ -5,7 +5,8 @@ from numpy import mean
 
 from scipy.signal import find_peaks, correlate
 
-from get_statistics_for_allophones import get_spectral_density_distribution, get_zero_cross_rate, define_classes_probabilities_for_window
+from get_statistics_for_allophones import get_spectral_density_distribution, get_zero_cross_rate, \
+    define_classes_probabilities_for_window
 from utils.signal_classes import Signal, Label, Seg
 
 
@@ -169,7 +170,7 @@ def detect_allophone_types(signal: Signal, labels: list[Label] = [], config: dic
 
                 zero_crossing_rate = (get_zero_cross_rate(signal_part) / len(signal_part)) * 100
 
-                #TODO ЗАКОММЕНТИТЬ ЛИШНЕЕ
+                # TODO ЗАКОММЕНТИТЬ ЛИШНЕЕ
                 # tmp
                 sp_density = list(sig_part_spectral_density_distribution.values())
 
@@ -216,7 +217,7 @@ def detect_allophone_types(signal: Signal, labels: list[Label] = [], config: dic
                     ind = probable_classes.index("noisy")
                     probable_classes.pop(ind)
 
-                #TODO log
+                # TODO log
                 if mean_part_ampl / max_syntagma_ampl > config_["threshold"] and "voiceless_stops" in probable_classes:
                     ind = probable_classes.index("voiceless_stops")
                     probable_classes.pop(ind)
@@ -228,17 +229,17 @@ def detect_allophone_types(signal: Signal, labels: list[Label] = [], config: dic
                     max([value for key, value in avg_probabilities.items() if key in probable_classes]))
                 most_probable = list(avg_probabilities.keys())[most_probable_ind]
 
-                vow_son_prob = avg_probabilities["periodic"]
-                st_prob = avg_probabilities["voiceless_stops"]
-                fr_prob = avg_probabilities["noisy"]
-                # other_prob = avg_probabilities["other"]
-                text_label = f"per {vow_son_prob} st {st_prob} fr {fr_prob}"
-                text_label = f"{most_probable} {mean_part_ampl / max_syntagma_ampl} {zero_crossing_rate}"
-                text_label = f"{most_probable}"
+                # vow_son_prob = avg_probabilities["periodic"]
+                # st_prob = avg_probabilities["voiceless_stops"]
+                # fr_prob = avg_probabilities["noisy"]
+                # # other_prob = avg_probabilities["other"]
+                # text_label = f"per {vow_son_prob} st {st_prob} fr {fr_prob}"
+                # text_label = f"{most_probable} {mean_part_ampl / max_syntagma_ampl} {zero_crossing_rate}"
+                # text_label = f"{most_probable}"
                 if zero_crossing_rate > 15:
-                    # text_label = f"fricative {less_2500_dens} {dens_2500_to_5000} {dens_5000_to_7500} {dens_7500_to_10000}"
+                    # text_label = f"noisy {less_2500_dens} {dens_2500_to_5000} {dens_5000_to_7500} {dens_7500_to_10000}"
                     text_label = f"noisy"
-                # TODO log
+                # TODO log + спектрально, чтобы отделить низкошумовую /z/
                 elif mean_part_ampl / max_syntagma_ampl < config_["threshold"]:  # voiceless stops
                     text_label = f"voiceless_stops"
                 else:

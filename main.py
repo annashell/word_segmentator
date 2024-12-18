@@ -77,10 +77,11 @@ def translate_to_latin(text: str) -> str:
             else:
                 latin_text += char_dict[ch][0] + " "
 
-        elif (ch in voiced_cons or ch in unvoiced_cons) and i < len(text_) - 1 and (text_[i + 1] in softening_vowels or text_[i + 1] == 'ь'):
+        elif (ch in voiced_cons or ch in unvoiced_cons) and i < len(text_) - 1 and (
+                text_[i + 1] in softening_vowels or text_[i + 1] == 'ь'):
             latin_text += char_dict[ch][2] + " "
             continue
-        #TODO Озвончение глухих согласных перед звонкими, в том числе на границе слов.
+        # TODO Озвончение глухих согласных перед звонкими, в том числе на границе слов.
         elif ch in ('б', 'в', 'г', 'д', 'з'):
             if i < len(text_) - 1:
                 if text_[i + 1] in stop_signs or text_[i + 1] in unvoiced_cons or (
@@ -101,7 +102,7 @@ def process_text(text: str, for_syntagmas) -> (list, list):
     """
     detects cluster boundaries in text
     0 - vowels and sonorants
-    1 - fricative
+    1 - noisy
     2 - voiceless stops
     3 - other consonants
     """
@@ -142,7 +143,7 @@ def process_text(text: str, for_syntagmas) -> (list, list):
 
 lbl_to_str_dict = {
     "": "4",
-    "fricative": "1",
+    "noisy": "1",
     "periodic": "0",
     "other": "3",
     "voiceless_stops": "2",
@@ -150,6 +151,7 @@ lbl_to_str_dict = {
     "new_synt": "",
     "pause": "4"
 }
+
 
 def nearest(lst, target):
     return min(lst, key=lambda x: abs(x - target))
@@ -334,9 +336,11 @@ def define_syntagmas_2(ac_labels, txt_clusters, text, word_boundaries_indexes, s
 
     for label1, label2 in zip(synt_labels, synt_labels[1:]):
         if label1.text == "new_synt":
-            ac_synt_durations.append((label2.position - label1.position)/sampling_freq)
+            ac_synt_durations.append((label2.position - label1.position) / sampling_freq)
 
-    best_syntagma_distribution = make_most_probable_syntagma_distribution_2(ac_string, txt_clusters, word_boundaries_indexes, ac_synt_durations, txt_arr)
+    best_syntagma_distribution = make_most_probable_syntagma_distribution_2(ac_string, txt_clusters,
+                                                                            word_boundaries_indexes, ac_synt_durations,
+                                                                            txt_arr)
     count = 0
     for label in ac_labels:
         if label.level == "Y1" and label.text == "new_synt":
@@ -370,11 +374,12 @@ def main(wav_fn, text_fn) -> None:
 
     # 2. Получение псевдотранскрипции и границ слов
     txt_clusters, word_boundaries_indexes, txt_arr = process_text(text, True)
-    print("Получена псевдотранскрипция")
+    print("Получена псевдотранскрипция", txt_clusters)
 
     # 3. Сопоставление акустических меток с текстом, поиск пауз
     # ac_labels = define_syntagmas(ac_labels, txt_clusters, text)
-    ac_labels = define_syntagmas_2(ac_labels, txt_clusters, text, word_boundaries_indexes, signal.params.samplerate, txt_arr)
+    ac_labels = define_syntagmas_2(ac_labels, txt_clusters, text, word_boundaries_indexes, signal.params.samplerate,
+                                   txt_arr)
     print(f"Получены метки с разбиением на синтагмы")
 
     # 4 Более точный ак анализ и транскрипция внутри каждой синтагмы
@@ -396,16 +401,16 @@ def main(wav_fn, text_fn) -> None:
     print(f"Границы слов записаны в файл {new_seg_fn}")
 
 
-wav_fn = r"D:\projects\word_segmentator\data\source_data\av18s.wav"
-text_fn = r"D:\projects\word_segmentator\data\source_data\av18s.txt"
+wav_fn = r"D:\pycharm_projects\word_segmentator\data\source_data\av15t.wav"
+text_fn = r"D:\pycharm_projects\word_segmentator\data\source_data\av15t.txt"
 
-# main(wav_fn, text_fn)
+main(wav_fn, text_fn)
 
-fld_name = r"D:\test_andre"
-wav_files = glob.glob(f"{fld_name}/*.wav", recursive=True)
-for file in wav_files:
-    try:
-        text_fn = os.path.splitext(file)[0] + ".txt"
-        main(file, text_fn)
-    except Exception:
-        print(f"{file} got error")
+# fld_name = r"D:\test_andre"
+# wav_files = glob.glob(f"{fld_name}/*.wav", recursive=True)
+# for file in wav_files:
+#     try:
+#         text_fn = os.path.splitext(file)[0] + ".txt"
+#         main(file, text_fn)
+#     except Exception:
+#         print(f"{file} got error")
