@@ -3,7 +3,7 @@ import os
 import re
 from difflib import ndiff
 
-from bruteforce_alignment_algo import make_most_probable_syntagma_distribution, \
+from alignment_algo import make_most_probable_syntagma_distribution, \
     make_most_probable_syntagma_distribution_2
 from sig_analysis import detect_pauses, detect_allophone_types
 from utils.json_utils import get_object_from_json
@@ -340,7 +340,16 @@ def define_syntagmas_2(ac_labels, txt_clusters, text, word_boundaries_indexes, s
 
     best_syntagma_distribution = make_most_probable_syntagma_distribution_2(ac_string, txt_clusters,
                                                                             word_boundaries_indexes, ac_synt_durations,
-                                                                            txt_arr)
+                                                                            txt_arr, False)
+
+    #TODO:
+
+    # if len(ac_synt_durations) > 1:
+    #     best_syntagma_distribution_reverse = make_most_probable_syntagma_distribution_2(ac_string, txt_clusters,
+    #                                                                             word_boundaries_indexes,
+    #                                                                             ac_synt_durations,
+    #                                                                             txt_arr, True)
+
     count = 0
     for label in ac_labels:
         if label.level == "Y1" and label.text == "new_synt":
@@ -404,13 +413,13 @@ def main(wav_fn, text_fn) -> None:
 wav_fn = r"D:\pycharm_projects\word_segmentator\data\source_data\av15t.wav"
 text_fn = r"D:\pycharm_projects\word_segmentator\data\source_data\av15t.txt"
 
-main(wav_fn, text_fn)
+# main(wav_fn, text_fn)
 
-# fld_name = r"D:\test_andre"
-# wav_files = glob.glob(f"{fld_name}/*.wav", recursive=True)
-# for file in wav_files:
-#     try:
-#         text_fn = os.path.splitext(file)[0] + ".txt"
-#         main(file, text_fn)
-#     except Exception:
-#         print(f"{file} got error")
+fld_name = r"D:\test_andre"
+wav_files = glob.glob(f"{fld_name}/*.wav", recursive=True)
+for file in wav_files:
+    try:
+        text_fn = os.path.splitext(file)[0] + ".txt"
+        main(file, text_fn)
+    except Exception:
+        print(f"{file} got error")

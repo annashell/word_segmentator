@@ -196,7 +196,24 @@ def get_cluster_index_for_border(text_clusters, index):
 
 
 def make_most_probable_syntagma_distribution_2(ac_string: str, txt_clusters, word_bound_indexes, ac_synt_durations,
-                                               txt_arr):
+                                               txt_arr, reverse=False):
+    #TODO: доделать вычисление границ наизнанку
+    # считать акустическую длину по транскрипции от начала сигнала, а не от конца прошлого отрезка.
+    # Вычислять границы с меньшим левенштейном для каждого участка, потом находить пересечения.
+    # Если пересечений нет - последний наиболее вероятный из левого края (т.к. меньше расхождение по акустике)
+    if reverse:
+        ac_string = ac_string[::-1]
+        txt_arr = txt_arr[::-1]
+        ac_synt_durations = ac_synt_durations[::-1]
+        num_symb = len(txt_arr)
+        word_bound_indexes_new = [num_symb - i for i in word_bound_indexes]
+        word_bound_indexes_new.append(0)
+        word_bound_indexes = sorted(word_bound_indexes_new)[:-1]
+        txt_clusters_new = [(0, txt_clusters[-1][1])]
+        for cl1, cl2 in zip(txt_clusters[::-1], txt_clusters[::-1][1:]):
+            txt_clusters_new.append((num_symb - cl1[0], cl2[1]))
+        txt_clusters = txt_clusters_new
+
     ac_syntagmas = [i for i in ac_string.split("4") if i]
 
     durations_stat_json = "data/stats/male_alloph_durations.json"

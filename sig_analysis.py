@@ -166,68 +166,67 @@ def detect_allophone_types(signal: Signal, labels: list[Label] = [], config: dic
                 new_label_position = int(i * N) + start.position
                 signal_part = syntagma[i * N: (i + 1) * N]
 
-                sig_part_spectral_density_distribution = get_spectral_density_distribution(signal_part, samplerate)
+                # sig_part_spectral_density_distribution = get_spectral_density_distribution(signal_part, samplerate)
 
                 zero_crossing_rate = (get_zero_cross_rate(signal_part) / len(signal_part)) * 100
 
-                # TODO ЗАКОММЕНТИТЬ ЛИШНЕЕ
                 # tmp
-                sp_density = list(sig_part_spectral_density_distribution.values())
-
-                peaks = find_peaks(sp_density, height=17)
-
-                correlation = correlate(signal_part, signal_part)
-                corr_zero_crossing = get_zero_cross_rate(correlation)
-
-                number_of_peaks_before_5000 = len([x for x in peaks[0] if x < len(sp_density) / 2])
-                number_of_peaks_after_5000 = len([x for x in peaks[0] if x >= len(sp_density) / 2])
-
-                less_250_dens = round(sp_density[0], 2)
-                dens_250_to_500 = round(sp_density[1], 2)
-                dens_500_to_750 = round(sp_density[2], 2)
-                dens_750_to_1000 = round(sp_density[3], 2)
-                dens_1000_to_1250 = round(sp_density[3], 2)
-                less_500_dens = round(sum(sp_density[:2], 2))
-                less_1000_dens = round(sum(sp_density[:4], 2))
-                dens_500_to_1000 = round(sum(sp_density[2:4], 2))
-                dens_1000_to_1500 = round(sum(sp_density[4:6], 2))
-                dens_1500_to_2000 = round(sum(sp_density[6:8], 2))
-                dens_2000_to_2500 = round(sum(sp_density[8:10], 2))
-                less_2500_dens = round(sum(sp_density[:10]), 2)
-                dens_2500_to_5000 = round(sum(sp_density[10: 20]), 2)
-                dens_5000_to_7500 = round(sum(sp_density[20: 30]), 2)
-                dens_7500_to_10000 = round(sum(sp_density[30: 40]), 2)
-                x = round(less_500_dens / dens_500_to_1000, 2)
-                y = round(less_1000_dens / (dens_1000_to_1500 + dens_1500_to_2000), 2)
-                # first_half_sum = sum(sp_density[: len(sp_density) // 2])
-                # sec_half_sum = sum(sp_density[len(sp_density) // 2 : ])
-                intensity_by_sample = sum([abs(i) for i in signal_part]) / len(signal_part)
-                # vowel_prob = avg_probabilities["vowels"]
+                # sp_density = list(sig_part_spectral_density_distribution.values())
+                #
+                # peaks = find_peaks(sp_density, height=17)
+                #
+                # correlation = correlate(signal_part, signal_part)
+                # corr_zero_crossing = get_zero_cross_rate(correlation)
+                #
+                # number_of_peaks_before_5000 = len([x for x in peaks[0] if x < len(sp_density) / 2])
+                # number_of_peaks_after_5000 = len([x for x in peaks[0] if x >= len(sp_density) / 2])
+                #
+                # less_250_dens = round(sp_density[0], 2)
+                # dens_250_to_500 = round(sp_density[1], 2)
+                # dens_500_to_750 = round(sp_density[2], 2)
+                # dens_750_to_1000 = round(sp_density[3], 2)
+                # dens_1000_to_1250 = round(sp_density[3], 2)
+                # less_500_dens = round(sum(sp_density[:2], 2))
+                # less_1000_dens = round(sum(sp_density[:4], 2))
+                # dens_500_to_1000 = round(sum(sp_density[2:4], 2))
+                # dens_1000_to_1500 = round(sum(sp_density[4:6], 2))
+                # dens_1500_to_2000 = round(sum(sp_density[6:8], 2))
+                # dens_2000_to_2500 = round(sum(sp_density[8:10], 2))
+                # less_2500_dens = round(sum(sp_density[:10]), 2)
+                # dens_2500_to_5000 = round(sum(sp_density[10: 20]), 2)
+                # dens_5000_to_7500 = round(sum(sp_density[20: 30]), 2)
+                # dens_7500_to_10000 = round(sum(sp_density[30: 40]), 2)
+                # x = round(less_500_dens / dens_500_to_1000, 2)
+                # y = round(less_1000_dens / (dens_1000_to_1500 + dens_1500_to_2000), 2)
+                # # first_half_sum = sum(sp_density[: len(sp_density) // 2])
+                # # sec_half_sum = sum(sp_density[len(sp_density) // 2 : ])
+                # intensity_by_sample = sum([abs(i) for i in signal_part]) / len(signal_part)
+                # # vowel_prob = avg_probabilities["vowels"]
                 mean_part_ampl = mean([abs(i) for i in signal_part])
 
-                probabilities, avg_probabilities, prob_by_rel_interval = define_classes_probabilities_for_window(
-                    signal_part, samplerate, avg_syntagma_intensity)
-                min_rel_interval_probability = min(list(prob_by_rel_interval.values()))
-                probable_classes = [key for key in prob_by_rel_interval.keys() if
-                                    prob_by_rel_interval[key] != min_rel_interval_probability]
-
-                probable_classes = ["noisy", "voiceless_stops", "periodic"]
-
-                if zero_crossing_rate < 10 and "noisy" in probable_classes:
-                    ind = probable_classes.index("noisy")
-                    probable_classes.pop(ind)
-
-                # TODO log
-                if mean_part_ampl / max_syntagma_ampl > config_["threshold"] and "voiceless_stops" in probable_classes:
-                    ind = probable_classes.index("voiceless_stops")
-                    probable_classes.pop(ind)
-
-                # if len(probable_classes) == 0:
-                #     probable_classes.append("vowels or sonorants")
-
-                most_probable_ind = list(avg_probabilities.values()).index(
-                    max([value for key, value in avg_probabilities.items() if key in probable_classes]))
-                most_probable = list(avg_probabilities.keys())[most_probable_ind]
+                # probabilities, avg_probabilities, prob_by_rel_interval = define_classes_probabilities_for_window(
+                #     signal_part, samplerate, avg_syntagma_intensity)
+                # min_rel_interval_probability = min(list(prob_by_rel_interval.values()))
+                # probable_classes = [key for key in prob_by_rel_interval.keys() if
+                #                     prob_by_rel_interval[key] != min_rel_interval_probability]
+                #
+                # probable_classes = ["noisy", "voiceless_stops", "periodic"]
+                #
+                # if zero_crossing_rate < 10 and "noisy" in probable_classes:
+                #     ind = probable_classes.index("noisy")
+                #     probable_classes.pop(ind)
+                #
+                # # TODO log
+                # if mean_part_ampl / max_syntagma_ampl > config_["threshold"] and "voiceless_stops" in probable_classes:
+                #     ind = probable_classes.index("voiceless_stops")
+                #     probable_classes.pop(ind)
+                #
+                # # if len(probable_classes) == 0:
+                # #     probable_classes.append("vowels or sonorants")
+                #
+                # most_probable_ind = list(avg_probabilities.values()).index(
+                #     max([value for key, value in avg_probabilities.items() if key in probable_classes]))
+                # most_probable = list(avg_probabilities.keys())[most_probable_ind]
 
                 # vow_son_prob = avg_probabilities["periodic"]
                 # st_prob = avg_probabilities["voiceless_stops"]
