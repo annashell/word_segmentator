@@ -20,17 +20,17 @@ def delete_same_symbols(str_to_process):
     return ''.join(normalized)
 
 
-def make_str_alignment(string_1, string_2, count=0):
+def make_str_alignment(string_1, string_2, count=0, operations = []):
     if string_1 == string_2:
-        return count
+        return (count, operations)
 
     for i, ch in enumerate(list(string_1)):
 
         if string_2.startswith(string_1):
-            return len(string_2) - len(string_1)
+            return (len(string_2) - len(string_1) + count, operations)
 
         if string_1.startswith(string_2):
-            return len(string_1) - len(string_2)
+            return (len(string_1) - len(string_2) + count, operations)
 
         if ch == string_2[i]:
             continue
@@ -49,7 +49,7 @@ def make_str_alignment(string_1, string_2, count=0):
             edit_variants.append(("r", levenstein_dist_repl, symb))
 
         for symb in possible_symb_to_replace:
-            str1_with_inserted_symb = delete_same_symbols(string_1[:i] + symb + string_1[i + 1:])
+            str1_with_inserted_symb = delete_same_symbols(string_1[:i] + symb + string_1[i:])
             levenstein_dist_repl = nltk.edit_distance(str1_with_inserted_symb, string_2)
             edit_variants.append(("i", levenstein_dist_repl, symb))
 
@@ -57,12 +57,15 @@ def make_str_alignment(string_1, string_2, count=0):
         best_var = edit_variants[distances.index(min(distances))]
         if best_var[0] == 'del':
             new_str = str1_with_del_symb
+            operations.append(('d', i, 0))
         elif best_var[0] == 'r':
-            new_str = delete_same_symbols(string_1[:i] + best_var[2] + string_1[i:])
+            new_str = delete_same_symbols(string_1[:i] + best_var[2] + string_1[i + 1:])
+            operations.append(('r', i, best_var[2]))
         elif best_var[0] == 'i':
-            new_str = delete_same_symbols(string_1[:i + 1] + best_var[2] + string_1[i:])
+            new_str = delete_same_symbols(string_1[:i] + best_var[2] + string_1[i:])
+            operations.append(('i', i, best_var[2]))
         count += 1
-        return make_str_alignment(new_str, string_2, count)
+        return make_str_alignment(new_str, string_2, count, operations)
 
 
 def partition(arr, n):
@@ -221,6 +224,7 @@ def make_most_probable_syntagma_distribution_2(ac_string: str, txt_clusters, wor
 
     synt_bord_indexes = [0]
     starting_point = 0
+    best_operations_all = []
 
     for i, synt in enumerate(ac_syntagmas):
         probable_synt_indexes = []
@@ -241,20 +245,24 @@ def make_most_probable_syntagma_distribution_2(ac_string: str, txt_clusters, wor
             probabilities.append(probability)
 
         lev_dist_for_probable_distributions = []
+        operations_list = []
         probabilities_for_selected = []
         for num, index in enumerate(probable_synt_indexes):
             part = txt_clusters[get_cluster_index_for_border(txt_clusters, starting_point): get_cluster_index_for_border(txt_clusters, index) + 1]
 
             part_distribution = delete_same_symbols("".join([str(x[1]) for x in part]))
-            lev = make_str_alignment(part_distribution, ac_syntagmas[i])
+            (lev, operations) = make_str_alignment(part_distribution, ac_syntagmas[i], 0, [])
             lev_dist_for_probable_distributions.append(lev)
+            operations_list.append(operations)
             probabilities_for_selected.append(probabilities[num])
 
         min_lev = min(lev_dist_for_probable_distributions)
         best_vars_by_lev = [ind for ind, variant in enumerate(lev_dist_for_probable_distributions) if variant == min_lev]
         best_var = probable_synt_indexes[best_vars_by_lev[-1]]
+        best_operation = operations_list[best_vars_by_lev[-1]]
         synt_bord_indexes.append(best_var)
         starting_point = best_var + 1
+        best_operations_all.append(best_operation)
 
     best_synt_distribution = []
     for ind1, ind2 in zip(synt_bord_indexes, synt_bord_indexes[1:]):
@@ -262,4 +270,4 @@ def make_most_probable_syntagma_distribution_2(ac_string: str, txt_clusters, wor
 
     best_synt_distribution[-1][1] = len(txt_arr) - 1
 
-    return best_synt_distribution
+    return best_synt_distribution, best_operations_all

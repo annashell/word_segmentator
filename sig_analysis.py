@@ -240,7 +240,7 @@ def detect_allophone_types(signal: Signal, labels: list[Label] = [], config: dic
                     text_label = f"noisy"
                 # TODO log + спектрально, чтобы отделить низкошумовую /z/
                 elif mean_part_ampl / max_syntagma_ampl < config_["threshold"]:  # voiceless stops
-                    text_label = f"voiceless_stops"
+                    text_label = f"voiceless_stop"
                 else:
                     text_label = f"periodic"
 
@@ -261,9 +261,9 @@ def detect_allophone_types(signal: Signal, labels: list[Label] = [], config: dic
     for label1, label2, label3 in zip(new_labels_clusters, new_labels_clusters[1:], new_labels_clusters[2:]):
         if (label3.position - label2.position) / samplerate < config_["min_alloph_duration"]:
             label2.text = label1.text
-        elif label2.text == "voiceless_stops" and label3.text == "":
+        elif label2.text == "voiceless_stop" and label3.text == "":
             label2.text = label1.text
-        elif label2.text == "voiceless_stops" and label1.text == "":
+        elif label2.text == "voiceless_stop" and label1.text == "":
             label2.text = label3.text
 
     new_labels_clusters = unite_label_clusters(new_labels_clusters)

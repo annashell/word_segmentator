@@ -11,7 +11,7 @@ from utils.signal_classes import Seg, Signal
 
 vowels = ('a', 'e', 'i', 'u', 'o', 'y')
 sonorants = ('l', 'm', 'n', 'v', "l'", "m'", "n'", "v'", "r'")
-voiceless_stops = ('p', 't', 'k', "p'", "k'")
+voiceless_stop = ('p', 't', 'k', "p'", "k'")
 noisy = (
     'z', "z'", 'zh', 's', 'f', 'h', "s'", "f'", "h'", 'ch', 'sh', 'sc', "t'", "d'", "c", "CH", 'j', 'r', "ch_", "zh'")
 other = ('b', 'd', "b'", 'g', "g'")
@@ -235,7 +235,7 @@ def get_allophone_statistics_for_corpus(fld_name, window_size):
 
     stat_distribution_by_classes = {
         "periodic": {},
-        "voiceless_stops": {},
+        "voiceless_stop": {},
         "noisy": {},
     }
 
@@ -245,8 +245,8 @@ def get_allophone_statistics_for_corpus(fld_name, window_size):
             new_key = "periodic"
         elif key in sonorants:
             new_key = "periodic"
-        elif key in voiceless_stops:
-            new_key = "voiceless_stops"
+        elif key in voiceless_stop:
+            new_key = "voiceless_stop"
         elif key in noisy:
             new_key = "noisy"
 
@@ -348,7 +348,7 @@ def get_key_for_dur(key):
         new_key = "0"
     elif key in sonorants:
         new_key = "0"
-    elif key in voiceless_stops:
+    elif key in voiceless_stop:
         new_key = "2"
     elif key in noisy:
         new_key = "1"

@@ -1,6 +1,7 @@
 import glob
 import os
 import re
+from copy import copy
 from difflib import ndiff
 
 from alignment_algo import make_most_probable_syntagma_distribution, \
@@ -146,7 +147,7 @@ lbl_to_str_dict = {
     "noisy": "1",
     "periodic": "0",
     "other": "3",
-    "voiceless_stops": "2",
+    "voiceless_stop": "2",
     "begin": "",
     "new_synt": "",
     "pause": "4"
@@ -321,6 +322,61 @@ def define_syntagmas(ac_labels, txt_clusters, text):
     return ac_labels
 
 
+def unite_txt_clusters(txt_clusters_synt_new):
+    txt_clusters_synt_new_un = []
+    delete_next = False
+    for cl1, cl2 in zip(txt_clusters_synt_new, txt_clusters_synt_new[1:]):
+        if delete_next:
+            delete_next = False
+            continue
+        if cl2[1] == cl1[1]:
+            txt_clusters_synt_new_un.append(cl1)
+            delete_next = True
+        else:
+            txt_clusters_synt_new_un.append(cl1)
+            delete_next = False
+    txt_clusters_synt_new_un.append(txt_clusters_synt_new[-1])
+    return txt_clusters_synt_new_un
+
+
+def rewrite_acoustic_markers(best_syntagma_distribution, best_operations, ac_labels, text, txt_clusters):
+    new_ac_markers_all = []
+    new_txt_distribution = []
+
+    for synt_count in range(len(best_operations)):
+        synt_distr = best_syntagma_distribution[synt_count]
+        operations = best_operations[synt_count]
+        txt_clusters_synt = list(filter(lambda x: synt_distr[0] <= x[0] < synt_distr[1], txt_clusters))
+
+        if len(operations) == 0:
+            new_txt_distribution.extend(txt_clusters_synt)
+        else:
+            for (operation, index, ch) in operations:
+                txt_clusters_synt_new = copy(txt_clusters_synt)
+                if operation == 'd':
+                    to_del_el = txt_clusters_synt[index]
+                    txt_clusters_synt_new = txt_clusters_synt_new[:index] + txt_clusters_synt_new[index + 1:]
+                    txt_clusters_synt_new[index] = (to_del_el[0], txt_clusters_synt_new[index][1])
+                    txt_clusters_synt_new = unite_txt_clusters(txt_clusters_synt_new)
+                elif operation == 'r':
+                    txt_clusters_synt_new[index] = (txt_clusters_synt_new[index][0], int(ch))
+                    txt_clusters_synt_new = unite_txt_clusters(txt_clusters_synt_new)
+                elif operation == 'i':
+                    txt_clusters_synt_new = txt_clusters_synt_new[:index] + [(txt_clusters_synt_new[index][0], int(ch))] + txt_clusters_synt_new[index:]
+                    txt_clusters_synt_new = unite_txt_clusters(txt_clusters_synt_new)
+
+            new_txt_distribution.extend(txt_clusters_synt_new)
+
+    ac_labels_count = 0
+    for label in ac_labels:
+        if label.level == 'R1' and label.text != "":
+            label_text = text[new_txt_distribution[ac_labels_count][0] : new_txt_distribution[ac_labels_count+1][0]]
+            ac_labels.append(Label(label.position, "R2", label_text))
+            ac_labels_count += 1
+
+    return ac_labels
+
+
 def define_syntagmas_2(ac_labels, txt_clusters, text, word_boundaries_indexes, sampling_freq, txt_arr):
     ac_part_labels = []
     synt_labels = []
@@ -338,23 +394,18 @@ def define_syntagmas_2(ac_labels, txt_clusters, text, word_boundaries_indexes, s
         if label1.text == "new_synt":
             ac_synt_durations.append((label2.position - label1.position) / sampling_freq)
 
-    best_syntagma_distribution = make_most_probable_syntagma_distribution_2(ac_string, txt_clusters,
+    best_syntagma_distribution, best_operations_all = make_most_probable_syntagma_distribution_2(ac_string, txt_clusters,
                                                                             word_boundaries_indexes, ac_synt_durations,
-                                                                            txt_arr, False)
-
-    #TODO:
-
-    # if len(ac_synt_durations) > 1:
-    #     best_syntagma_distribution_reverse = make_most_probable_syntagma_distribution_2(ac_string, txt_clusters,
-    #                                                                             word_boundaries_indexes,
-    #                                                                             ac_synt_durations,
-    #                                                                             txt_arr, True)
-
+                                                                            txt_arr)
     count = 0
     for label in ac_labels:
         if label.level == "Y1" and label.text == "new_synt":
-            label.text = text[best_syntagma_distribution[count][0]: best_syntagma_distribution[count][-1]]
+            synt_text = text[best_syntagma_distribution[count][0]: best_syntagma_distribution[count][-1]]
+            label.text = synt_text
             count += 1
+    
+    rewrite_acoustic_markers(best_syntagma_distribution, best_operations_all, ac_labels, text, txt_clusters)
+            
     return ac_labels
 
 
@@ -413,13 +464,13 @@ def main(wav_fn, text_fn) -> None:
 wav_fn = r"D:\pycharm_projects\word_segmentator\data\source_data\av15t.wav"
 text_fn = r"D:\pycharm_projects\word_segmentator\data\source_data\av15t.txt"
 
-# main(wav_fn, text_fn)
+main(wav_fn, text_fn)
 
-fld_name = r"D:\test_andre"
-wav_files = glob.glob(f"{fld_name}/*.wav", recursive=True)
-for file in wav_files:
-    try:
-        text_fn = os.path.splitext(file)[0] + ".txt"
-        main(file, text_fn)
-    except Exception:
-        print(f"{file} got error")
+# fld_name = r"D:\test_andre"
+# wav_files = glob.glob(f"{fld_name}/*.wav", recursive=True)
+# for file in wav_files:
+#     try:
+#         text_fn = os.path.splitext(file)[0] + ".txt"
+#         main(file, text_fn)
+#     except Exception:
+#         print(f"{file} got error")
